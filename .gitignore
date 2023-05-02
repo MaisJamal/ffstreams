@@ -1,0 +1,11 @@
+**/*.pyc
+
+
+auto_driving/gifs/*
+
+*.o
+*.tab.c
+ffplanner/lex.fct_pddl.c
+ffplanner/lex.ops_pddl.c
+ffplanner/ff
+ffplanner/libff.so
