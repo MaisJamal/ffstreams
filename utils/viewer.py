@@ -8,7 +8,7 @@ ARRAY = np.array
 
 import matplotlib.pyplot as plt
 import tkinter as tk
-from pandas import DataFrame
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 

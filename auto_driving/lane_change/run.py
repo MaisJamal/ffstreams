@@ -9,8 +9,7 @@ import subprocess
 import re
 import imageio.v2 as imageio
 from random import choices
-import pickle
-import math
+from metrics.OPM import calc_OPM_metric
 
 from utils.viewer import get_rect
 
@@ -267,9 +266,10 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 def main():
     stg.init()  
 
-    counter_exp = 10
+    counter_exp = 50
     statistics_arr = np.zeros(counter_exp)
     count_success = 0
+    OPM_values = []
     folder = time.strftime("%Y%m%d-%H%M%S")
 
 
@@ -383,6 +383,11 @@ def main():
                 final_traj.s_d = final_traj.s_d + [yield_traj[0].s_d[1]]
                 final_traj.s_dd = final_traj.s_dd + [yield_traj[0].s_dd[1]]
                 final_traj.yaw = final_traj.yaw + [yield_traj[0].yaw[1]]
+                # for calculating OPM metric
+                final_traj.s_ddd = final_traj.s_ddd + [yield_traj[0].s_ddd[1]]
+                final_traj.d_dd = final_traj.d_dd + [yield_traj[0].d_dd[1]]
+                final_traj.d_ddd = final_traj.d_ddd + [yield_traj[0].d_ddd[1]]
+                #
                 curr_dl = yield_traj[0].d_d[1]
                 curr_ddl = yield_traj[0].d_dd[1]
                 acc0 = yield_traj[0].s_dd[1]
@@ -407,6 +412,12 @@ def main():
                 final_traj.s_d = final_traj.s_d + [trajectories[0].s_d[1]]
                 final_traj.s_dd = final_traj.s_dd + [trajectories[0].s_dd[1]]
                 final_traj.yaw = final_traj.yaw + [trajectories[0].yaw[1]]
+
+                # for calculating OPM metric
+                final_traj.s_ddd = final_traj.s_ddd + [trajectories[0].s_ddd[1]]
+                final_traj.d_dd = final_traj.d_dd + [trajectories[0].d_dd[1]]
+                final_traj.d_ddd = final_traj.d_ddd + [trajectories[0].d_ddd[1]]
+                #
                 curr_dl = trajectories[0].d_d[1]
                 curr_ddl = trajectories[0].d_dd[1]
                 acc0 = trajectories[0].s_dd[1]
@@ -434,17 +445,21 @@ def main():
                 reached_end = True
                 statistics_arr[exp] = total_excution_time /cycle_count
                 count_success += 1 
-            
-        
+
+        #print(len(final_traj.s_dd),len(final_traj.d_dd),len(final_traj.s_ddd),len(final_traj.s_ddd))    
+        OPM_values.append(calc_OPM_metric(final_traj))
         plot_traj(final_traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder)# trajectories[0]
     param_file = 'auto_driving/gifs/lane_change_gifs/single_exp'+folder+'/statistics.txt'
+    os.makedirs(os.path.dirname(param_file), exist_ok=True)
+
     f = open(param_file, "w")
     f.write("Successful experiments: %s\n" % count_success )
     f.write("Total experiments: %s\n" % counter_exp )
     f.write("Statistics array: %s\n" % statistics_arr)
+    f.write("OPM metric: %s\n" % OPM_values)
     f.close()
     
-    input("end of exp?")
+    #input("end of exp?")
 
    
    
