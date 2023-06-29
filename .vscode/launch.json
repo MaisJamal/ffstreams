@@ -9,6 +9,18 @@
             "type": "python",
             "request": "launch",
             "module": "auto_driving.lane_change.run"
+        },
+        {
+            "name": "Python: Overtake",
+            "type": "python",
+            "request": "launch",
+            "module": "auto_driving.overtaking.run"
+        },
+        {
+            "name": "Python: KeepLane",
+            "type": "python",
+            "request": "launch",
+            "module": "auto_driving.keep_lane.run"
         }
     ]
 }
