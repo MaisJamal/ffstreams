@@ -23,6 +23,7 @@ from auto_driving.lane_change.lane_change_streams import get_yield_change_gen,ge
 import utils.settings as stg
 import time
 from utils.translator import translate_to_pddl_change_lane,translate_to_pddl_2_1, translate_to_pddlplus
+from utils.statistics import Statistics
 
 ARRAY = np.array
 
@@ -178,10 +179,10 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
 
     trajectories = []
     
-    ss1 = time.time()
+    #ss1 = time.time()
     output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed))
-    ss2 = time.time()
-    print("time for get_traj_change_gen", ss2-ss1)
+    #ss2 = time.time()
+    #print("time for get_traj_change_gen", ss2-ss1)
 
     show_output = False  # important
     if show_output:
@@ -236,12 +237,12 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     print("excution time of FF planner: ",  time.time() - start)
     planner_output = str(planner_output)  
     q_from ,q_to = extract_plan(planner_output) 
-    ss3 = time.time()
+    #ss3 = time.time()
     for i in range(len(q_from)):    
         if confs[q_to[i]][1] == stg.wy_middle_upper_lane[0] :
             overtake = True
         trajectories.append(traj_dict[(q_from[i],q_to[i])])
-    print("time for appending trajectories: ",time.time()-ss3)
+    #print("time for appending trajectories: ",time.time()-ss3)
     return trajectories,confs,traj_dict
 
 def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
@@ -255,7 +256,7 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
         #((40, 48.25), (5.5, 2.5), (2, 0))
         b_speed = b_speed + accelerations[i] * dt
         ############# update last obstacle's lane
-        if obs == obstacles[-1] and curr_time > obs6_update_time and b_y > 51.75:
+        if i == 5 and curr_time > obs6_update_time and b_y > 51.75:
             b_y -= 0.7
         ##############
         obstacles_new.append(((b_x,b_y),obs[1],(b_speed,0)))
@@ -266,7 +267,7 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 def main():
     stg.init()  
 
-    counter_exp = 50
+    counter_exp = 10
     statistics_arr = np.zeros(counter_exp)
     count_success = 0
     OPM_values = []
@@ -276,7 +277,7 @@ def main():
     ############ change to left lane problem ###############
 
     for exp in range(counter_exp):
-
+        
         INIT_SPEED = 29 # m/s
         curr_time =  0.0
         dt = 0.2
@@ -295,25 +296,25 @@ def main():
         obs2_x = random.uniform(-85.0,85.0)
         obs2_v = random.uniform(26.0,32.0)
         obs2_a = random.uniform(-3.0,3.0)
-
+        
         obs3_x = random.uniform(-85.0,85.0)
         obs3_v = random.uniform(26.0,32.0)
         obs3_a = random.uniform(-3.0,3.0)
-
+        
         obs4_x = random.uniform(-85.0,85.0)
         obs4_v = random.uniform(26.0,32.0)
         obs4_a = random.uniform(-3.0,3.0)
-
+        
         obs5_x = random.uniform(-85.0,85.0)
         obs5_v = random.uniform(26.0,32.0)
         obs5_a = random.uniform(-3.0,3.0)
-
+        
         obs6_x = random.uniform(-85.0,85.0)
         obs6_y = 55.25
         obs6_v = random.uniform(26.0,32.0)
         obs6_a = 0.0
         obs6_update_time = random.uniform(0.0,54.0)
-
+        
         obstacles = [((obsfront_x, 48.25), (5.5, 2.5), (obsfront_v, 0)),
                     ((obs2_x, 51.75), (5.5, 2.5), (obs2_v, 0)),
                     ((obs3_x, 51.75), (5.5, 2.5), (obs3_v, 0)),
@@ -323,6 +324,33 @@ def main():
         
         accelerations = [obsfront_a , obs2_a, obs3_a , obs4_a, obs5_a, obs6_a]
         
+        ####### for statistics ######################
+        stat = Statistics()
+        
+        stat.t.append(curr_time)
+        stat.yaw.append(0.0)
+        stat.s = [q0[0]]
+        stat.v_s = [q0[2]]
+        stat.a_s = [0.0]
+        stat.j_s = [0.0]
+
+        stat.l = [q0[1]]
+        stat.v_l = [curr_dl]
+        stat.a_l = [curr_ddl]
+        stat.j_l = [0.0]
+
+        stat.front_obs_s = [obstacles[0][0][0]]
+        stat.front_obs_v_s = [obstacles[0][2][0]]
+        stat.front_obs_l = [obstacles[0][0][1]]
+        
+
+        stat.other_obs_no = len(obstacles) - 1
+        for i in range(stat.other_obs_no):
+            stat.other_obs_s.append([obstacles[i+1][0][0]])  #2d
+            stat.other_obs_v_s.append([obstacles[i+1][2][0]]) #2d
+            stat.other_obs_a_s.append(accelerations[i+1]) #1d
+            stat.other_obs_l.append([obstacles[i+1][0][1]]) #2d
+
         ####### for ploting obstacles ###############
         obstacles_xs = {}
         obstacles_ys = {}
@@ -441,6 +469,31 @@ def main():
             excution_t = time.time() - start_time
             total_excution_time += excution_t  
             cycle_count +=1
+
+            ####### for statistics ######################            
+            stat.t.append(curr_time)
+            stat.yaw.append(final_traj.yaw[-1])
+            
+            stat.s.append(final_traj.x[-1])
+            stat.v_s.append(final_traj.s_d[-1])
+            stat.a_s.append(final_traj.s_dd[-1])
+            stat.j_s.append(final_traj.s_ddd[-1])
+
+            stat.l.append(final_traj.y[-1])
+            stat.v_l.append(curr_dl)
+            stat.a_l.append(curr_ddl)
+            stat.j_l.append(final_traj.d_ddd[-1])
+
+            stat.front_obs_s.append(new_obs[0][0][0])
+            stat.front_obs_v_s.append(new_obs[0][2][0])
+            stat.front_obs_l.append(new_obs[0][0][1])
+        
+            for i in range(stat.other_obs_no):
+                stat.other_obs_s[i].append(new_obs[i+1][0][0])  #2d
+                stat.other_obs_v_s[i].append(new_obs[i+1][2][0]) #2d
+                stat.other_obs_l[i].append(new_obs[i+1][0][1]) #2d
+            ###########################################
+
             if abs(final_traj.y[-1] - (all_y[1]) ) < 0.01:
                 reached_end = True
                 statistics_arr[exp] = total_excution_time /cycle_count
@@ -448,6 +501,7 @@ def main():
 
         #print(len(final_traj.s_dd),len(final_traj.d_dd),len(final_traj.s_ddd),len(final_traj.s_ddd))    
         OPM_values.append(calc_OPM_metric(final_traj))
+        stat.save_to_file('auto_driving/gifs/lane_change_gifs/single_exp'+folder,exp)
         plot_traj(final_traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder)# trajectories[0]
     param_file = 'auto_driving/gifs/lane_change_gifs/single_exp'+folder+'/statistics.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
