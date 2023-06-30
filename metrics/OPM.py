@@ -4,6 +4,7 @@ Occupant's Preference Metric:
 ( longitudinal acceleration threshold,  longitudinal deceleration threshold, lateral acceleration threshold(abs),
     maximum longitudinal jerk(abs), maximum lateral jerk(abs))
 
+Paper: Self-Driving like a Human driver instead of a Robocar: Personalized comfortable driving experience for autonomous vehicles 
 https://arxiv.org/pdf/2001.03908.pdf
 
 """

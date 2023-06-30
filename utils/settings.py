@@ -9,6 +9,7 @@ def init():
     global TARGET_SPEED
     global TARGET_L
     global ROBOT_RADIUS
+    global CAR_LENGTH
     global show_animation
     global PLANNING_T
     global area
@@ -39,6 +40,7 @@ def init():
     global tyBound4
     global txBound5
     global tyBound5
+
     #global csp
     # for animation
     area = 30.0
@@ -111,6 +113,7 @@ def init():
     #D_T_S = 5.0 / 3.6  # target speed sampling length [m/s]
     #N_S_SAMPLE = 1  # sampling number of target speed
     ROBOT_RADIUS = 2.0  # robot radius [m]
+    CAR_LENGTH = 5.5
 
 
 class FrenetPath:

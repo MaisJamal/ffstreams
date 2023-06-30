@@ -1,6 +1,7 @@
 
 import numpy as np
 import pandas as pd
+from metrics.TTC import calc_TTC_traj
 import os
 
 class Statistics:
@@ -28,8 +29,16 @@ class Statistics:
         self.other_obs_v_s = [] #2d
         self.other_obs_a_s = [] #1d
         self.other_obs_l = [] #2d
+
+        self.decisions = []
+        self.TTC = []
     
+    def get_TTC(self):
+        self.TTC = calc_TTC_traj(self.s , self.v_s , self.front_obs_s, self.front_obs_v_s)
+
     def save_to_file(self,path,exp_no):
+
+        self.get_TTC()
 
         # preprocess data
         length = len( self.t)
@@ -56,6 +65,9 @@ class Statistics:
             data['obs_'+ str(i+1) +'_a_s'] =  [self.other_obs_a_s[i] ] * length
             data['obs_'+ str(i+1) +'_l'] =  self.other_obs_l[i]
 
+        data['decisions'] = self.decisions + ["NONE"]
+
+        data['TTC'] = self.TTC
         #for key in data.keys() :
          #   print(key, "len " , len(data[key]))
 
