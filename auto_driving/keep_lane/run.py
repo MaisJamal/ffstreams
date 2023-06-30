@@ -18,11 +18,11 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import random
-from ffstreams.frenet_optimizer import generate_target_course,FrenetPath,get_traj
-from auto_driving.lane_change.lane_change_streams import get_yield_change_gen,get_traj_change_gen,get_motion_gen ,get_connect_gen,get_yield_motion_gen,get_follow_motion_gen,get_second_connect_gen
+from ffstreams.frenet_optimizer import FrenetPath
+from auto_driving.keep_lane.keep_lane_streams import get_yield,get_traj_change_gen, get_follow_speed
 import utils.settings as stg
 import time
-from utils.translator import translate_to_pddl_change_lane,translate_to_pddl_2_1, translate_to_pddlplus
+from utils.translator import translate_to_pddl_keep_lane
 from utils.statistics import Statistics
 
 ARRAY = np.array
@@ -31,6 +31,12 @@ def extract_plan(string):
     q_from = []
     q_to = []
     idx = [m.start() for m in re.finditer('MOVE', string)]
+    
+    if not idx:
+        idx = [m.start() for m in re.finditer('KEEP_SPEED', string)]
+    
+    if not idx:
+        idx = [m.start() for m in re.finditer('KEEP_LANE_YIELD', string)]
 
     for i in idx:
         k = string[i:]
@@ -50,6 +56,7 @@ def extract_plan(string):
         q_from.append(q_from_1)
         q_to.append(q_to_1)
     
+
     return q_from,q_to
 
 
@@ -127,10 +134,11 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder):##########
 
         #print("t: ", full_traj.t)
         plt.rcParams["figure.figsize"] = [7.00, 3.50]
-        plt.xlim(0 , traj.x[-1])#plt.xlim(0 , stg.ENV_WIDTH)
-        plt.ylim(0, 100)#plt.ylim(full_traj.y[0] - stg.area, full_traj.y[0] + stg.area)
+        #plt.xlim(0 , traj.x[-1])#plt.xlim(0 , stg.ENV_WIDTH)
+        plt.xlim(traj.x[i] -20, traj.x[i]+20)
+        plt.ylim(40, 60)#plt.ylim(full_traj.y[0] - stg.area, full_traj.y[0] + stg.area)
         plt.title("v[km/h]:" + str(traj.s_d[i] * 3.6)[0:4])
-        plt.grid(True)
+        plt.grid(False)
 
         plt.subplot(gs[1])
         plt.plot(traj.x, [speed* 3.6 for speed in traj.s_d],"-r")
@@ -175,15 +183,51 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     problem_file = "problem.pddl"
     rand_x_goal = 20
     confs = []
+    conf_num = 1
+    traj_dict = {} # for connectivity graph
+    traj_array = np.full((5,5), False, dtype=bool) # for connectivity graph
+    traj_type = {} # for connectivity graph
     confs.append(q0)
 
     trajectories = []
+    # call available applicable streams
+
+    follow_output = next(get_follow_speed(q0,acc0,curr_dl,curr_ddl,target_speed))
+    if follow_output is not None:
+        q = ARRAY([follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].s_d[-1]])
+        confs.append(q)
+        traj_dict[(0,conf_num)] = follow_output[0]
+        traj_array[0][conf_num] = True
+        traj_type[(0,conf_num)] = "FOLLOW"
+        conf_num +=1
+        
+
+    yield_output = next(get_yield(q0,acc0,curr_dl,curr_ddl,obstacles[0])) #TODO add condition of existing front obstacle
+    if yield_output is not None:
+        q = ARRAY([yield_output[0].x[-1],yield_output[0].y[-1],yield_output[0].s_d[-1]])
+        confs.append(q)
+        traj_dict[(0,conf_num)] = yield_output[0]
+        traj_array[0][conf_num] = True
+        traj_type[(0,conf_num)] = "YIELD"
+        conf_num +=1
+    
+    #print("yield: ", yield_output[0].s_d[-1]," ,follow: ", follow_output[0].s_d[-1])
+    #print(follow_output[0].s[-1] , follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].d[-1])
+    #print("yield traj len: ", len(yield_output[0].s_d), " , follow traj len: ", len(follow_output[0].s_d))
     
     #ss1 = time.time()
-    output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed))
+    """
+    lane_change_output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed))
+    if lane_change_output is not None:
+        q = ARRAY([lane_change_output[0].x[-1],lane_change_output[0].y[-1],lane_change_output[0].s_d[-1]])
+        confs.append(q)
+        traj_dict[(0,conf_num)] = lane_change_output[0]
+        traj_array[0][conf_num] = True
+        traj_type[(0,conf_num)] = "CHANGE_LEFT"
+        conf_num +=1
     #ss2 = time.time()
     #print("time for get_traj_change_gen", ss2-ss1)
-
+    """
     show_output = False  # important
     if show_output:
         dt = 0.2
@@ -201,33 +245,30 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
             rect = get_rect((obs[0][0],obs[0][1]),obs[1]) # in the form [(left,bottom),x_extend,y_extend]
             rect_patch=mpatches.Rectangle(rect[0], rect[1], rect[2])#((31,15),14,7, fill = False,color = "purple",linewidth = 2)
             plt.gca().add_patch(rect_patch)
-        plt.plot(output[0].x[0:], output[0].y[0:], "-r")
-        plt.plot(output[0].x[0],output[0].y[0], "vc")
+        plt.plot(follow_output[0].x[0:], follow_output[0].y[0:], "-r")
+        plt.plot(follow_output[0].x[0],follow_output[0].y[0], "vc")
+        plt.plot(yield_output[0].x[0:], yield_output[0].y[0:], "-b")
+        plt.plot(yield_output[0].x[0],yield_output[0].y[0], "vc")
+        #plt.plot(lane_change_output[0].x[0:], lane_change_output[0].y[0:], "-r")
+        #plt.plot(lane_change_output[0].x[0],lane_change_output[0].y[0], "vc")
         plt.xlim(0, 800)
         area = 50
-        plt.ylim(output[0].y[1] - area, output[0].y[1] + area)
-        plt.title("v[m/s]:" + str(output[0].s_d[1] )[0:4] + "a[m/s2]:" + str(output[0].s_dd[1] )[0:4])
+        #plt.ylim(lane_change_output[0].y[1] - area, lane_change_output[0].y[1] + area)
+        #plt.title("v[m/s]:" + str(lane_change_output[0].s_d[1] )[0:4] + "a[m/s2]:" + str(lane_change_output[0].s_dd[1] )[0:4])
         plt.grid(True)
         plt.pause(0.1)
     ### build connectivity array of trajectories ###
-    traj_dict = {}
-    traj_array = np.full((2,2), False, dtype=bool)
-    if output is not None:
-        traj_dict[(0,1)] = output[0]
-        traj_array[0][1] = True
-        goal = ARRAY([output[0].x[-1],target_y, target_speed])
-    else:
-        goal = ARRAY([rand_x_goal,target_y, target_speed])
+   
     print("Connectivity array between configurations:")
     print(traj_array)
-    confs.append(goal)
+    
 
     for i in range(len(confs)):
         print("q",i,":",confs[i])
 
     direction = "left"
     start = time.time()
-    translate_to_pddl_change_lane(direction,confs,traj_dict,traj_array,obstacles,file_path,problem_file)
+    translate_to_pddl_keep_lane(direction,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file)
     print("time of printing: ",time.time() - start)
 
     start = time.time() 
@@ -238,12 +279,14 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     planner_output = str(planner_output)  
     q_from ,q_to = extract_plan(planner_output) 
     #ss3 = time.time()
+    final_traj_type = "NONE"
     for i in range(len(q_from)):    
         if confs[q_to[i]][1] == stg.wy_middle_upper_lane[0] :
             overtake = True
         trajectories.append(traj_dict[(q_from[i],q_to[i])])
+        final_traj_type = traj_type[(q_from[i],q_to[i])]
     #print("time for appending trajectories: ",time.time()-ss3)
-    return trajectories,confs,traj_dict
+    return trajectories,confs,traj_dict,final_traj_type
 
 def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
     obstacles_new = []
@@ -267,7 +310,7 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 def main():
     stg.init()  
 
-    counter_exp = 10
+    counter_exp = 1
     statistics_arr = np.zeros(counter_exp)
     count_success = 0
     OPM_values = []
@@ -289,8 +332,8 @@ def main():
         target_y = all_y[1]
         target_speed = 30  
 
-        obsfront_x = random.uniform(50.0,65.0)
-        obsfront_v = random.uniform(26.0,32.0)
+        obsfront_x = 90#random.uniform(50.0,65.0)
+        obsfront_v = 26.0#random.uniform(26.0,32.0)
         obsfront_a = 0.0
 
         obs2_x = random.uniform(-85.0,85.0)
@@ -372,13 +415,13 @@ def main():
 
             #goal = ARRAY([output[0].x[-1],target_y, target_speed])
             s1 = time.time()
-            trajectories,confs,traj_dict = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,new_obs)
+            trajectories,confs,traj_dict,final_traj_type = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,new_obs)
             s2 = time.time()
             print("time of func solve_pddl_lane_change is ", s2 - s1)
             if len(trajectories) < 1:
                 print("no plan found")
 
-                yield_traj = next(get_yield_change_gen(q0,0,0,0,new_obs[0]))
+                yield_traj = next(get_yield(q0,0,0,0,new_obs[0]))
                 s3 = time.time()
                 print("time of func get_yiel: ",s3-s2)
                 show_output = False # important
@@ -492,6 +535,8 @@ def main():
                 stat.other_obs_s[i].append(new_obs[i+1][0][0])  #2d
                 stat.other_obs_v_s[i].append(new_obs[i+1][2][0]) #2d
                 stat.other_obs_l[i].append(new_obs[i+1][0][1]) #2d
+
+            stat.decisions.append(final_traj_type)
             ###########################################
 
             if abs(final_traj.y[-1] - (all_y[1]) ) < 0.01:

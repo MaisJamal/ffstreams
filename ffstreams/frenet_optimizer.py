@@ -69,7 +69,7 @@ K_D = 1.0
 K_LAT = 1.0
 K_LON = 1.0
 
-show_animation = True
+show_animation = False
 
 
 class QuarticPolynomial:
@@ -534,6 +534,11 @@ def get_traj(x0,y0,speed0,target_x,target_y,target_speed):
 def get_traj_change_lane(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,target_speed):
     global MAX_SPEED
     global MAX_ACCEL
+    global MAX_T
+    global MIN_T 
+
+    MAX_T = 10
+    MIN_T = 4
 
     MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
     MAX_ACCEL = 1  # maximum acceleration [m/ss]
@@ -577,7 +582,7 @@ def get_traj_change_lane(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,ta
     s_dd = acc0
     area = 30.0  # animation area length [m]
 
-    path = frenet_optimal_planning_change_lane(
+    path = frenet_optimal_planning_corrected(
                 csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
     if path is None:
         return False,None
@@ -736,7 +741,7 @@ def get_traj_change_lane(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,ta
         c_d_dd = path.d_dd[-1]
         c_speed = path.s_d[-1]
         s_dd = path.s_dd[-1]
-        path = frenet_optimal_planning_change_lane(
+        path = frenet_optimal_planning_corrected(
                 csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
         #print("path speed: ",path.s_d)
         #print("path t: ", path.t)
@@ -748,9 +753,16 @@ def get_traj_change_lane(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,ta
     return False,None
 
 
-def get_traj_change_lane_yield(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,target_speed):
+def get_traj_yield(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,target_speed):
     global MAX_SPEED
     global MAX_ACCEL
+    global MAX_T
+    global MIN_T 
+
+    MAX_T = 5.1
+    MIN_T = 5
+
+
 
     MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
     MAX_ACCEL = 1  # maximum acceleration [m/ss]
@@ -782,7 +794,7 @@ def get_traj_change_lane_yield(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,targe
     s_dd = acc0
     area = 30.0  # animation area length [m]
 
-    path = frenet_optimal_planning_change_lane(
+    path = frenet_optimal_planning_corrected(
                 csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
     if path is None:
         return False,None
@@ -811,10 +823,78 @@ def get_traj_change_lane_yield(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,targe
      
     return False,None
 
+def get_traj_follow_speed(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,target_speed):
+    global MAX_SPEED
+    global MAX_ACCEL
+    global TARGET_SPEED
+    global TARGET_L
+    global DELTA_TARGET_S
+    global MAX_T
+    global MIN_T 
 
-def frenet_optimal_planning_change_lane(csp, s0, c_speed , s_dd, c_d, c_d_d, c_d_dd, ob):
+    MAX_T = 5.1
+    MIN_T = 5
+    target_x = 20 # any target
+    MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+    MAX_ACCEL = 1  # maximum acceleration [m/ss]
+    ob = None 
+    
+
+    if (target_y==stg.wy_middle_lower_lane[0]):
+        csp = 1
+        #print("csp1",stg.wy_middle_lower_lane[0])
+    else:
+        csp = 2
+   
+    TARGET_SPEED = target_speed
+    
+    DELTA_TARGET_S, c_d = calc_ds_l0(target_x,target_y,x0,y0)
+    TARGET_L = 0
+    
+
+    show_final_traj = False #important
+
+    # initial state
+    c_speed = speed0  # current speed [m/s]
+    
+    c_d_d = curr_dl # current lateral speed [m/s]
+    c_d_dd = curr_ddl  # current lateral acceleration [m/s]
+    s0 = x0  # current course position
+    s_dd = acc0
+    area = 30.0  # animation area length [m]
+
+    path = frenet_optimal_planning_corrected(
+                csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
+    if path is None:
+        return False,None
+    else:
+        if show_final_traj and len(path.y) > 1:  # pragma: no cover
+            plt.cla()
+            # for stopping simulation with the esc key.
+            plt.gcf().canvas.mpl_connect(
+                'key_release_event',
+                lambda event: [exit(0) if event.key == 'escape' else None])
+            plt.plot(stg.tx, stg.ty,"y--")
+            plt.plot(stg.tx2, stg.ty2,"y--")
+            plt.plot(stg.txBound1, stg.tyBound1,"c")
+            plt.plot(stg.txBound2, stg.tyBound2,"c")
+            plt.plot(stg.txBound3, stg.tyBound3,"c")
+            if ob is not None:
+                plt.plot(ob[:, 0], ob[:, 1], "xk")
+            plt.plot(path.x[0:], path.y[0:], "-r")
+            plt.plot(path.x[0], path.y[0], "vc")
+            plt.xlim(0, 800)
+            plt.ylim(path.y[1] - area, path.y[1] + area)
+            plt.title("v[km/h]:" + str(c_speed * 3.6)[0:4])
+            plt.grid(True)
+            plt.pause(0.1)
+        return True, path
+     
+    return False,None
+
+def frenet_optimal_planning_corrected(csp, s0, c_speed , s_dd, c_d, c_d_d, c_d_dd, ob):
     #start_t = time.time()
-    fplist = calc_frenet_paths_change_lane(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0)
+    fplist = calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0)
     #print("time needed for calc fre paths: ", time.time()-start_t)
 
     #start_t = time.time()
@@ -835,7 +915,7 @@ def frenet_optimal_planning_change_lane(csp, s0, c_speed , s_dd, c_d, c_d_d, c_d
 
     return best_path
 
-def calc_frenet_paths_change_lane(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0):
+def calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0):
     frenet_paths = []
     #print("dfa ",min_time,max_time)
     # generate path to each offset goal

@@ -2,7 +2,7 @@ from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
 import utils.settings as stg
-from ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_change_lane_yield
+from ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield
 import random
 from random import choices
 from numpy.linalg import norm
@@ -264,7 +264,7 @@ def get_yield_change_gen(q1,acc0,curr_dl,curr_ddl,front_obstacle): # stream for 
         dec_x = b_x - 3 * q1[2]  # q1---------*dec------*obs--q2  # delta_x = delta_t(3s) * v_q1
         dec_v = q1[2]
         
-        thereIsTraj,traj = get_traj_change_lane_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,b_speed)
+        thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,b_speed)
         #get_traj(q1[0],q1[1],q1[2],dec_x,dec_y,b_speed)
         if(thereIsTraj):
             yield (traj, )

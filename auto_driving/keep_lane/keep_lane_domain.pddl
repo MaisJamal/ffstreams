@@ -7,7 +7,7 @@
 (:predicates  
         (next ?q1 ?q2 ?q_end - conf) (traj ?q1 ?q2 - conf) (idle)(is_first ?q - conf ?o - obstacles) (is_last ?q - conf ?o - obstacles)(ego_at ?q - conf)
         (checking_traj ?q1 ?q2 - conf ?o - obstacles)(checked_traj ?q1 ?q2 - conf ?o - obstacles) (moved_forward)
-        (on_init_lane)(yield_traj ?q1 ?q2)(keep_speed_traj ?q1 ?q2))
+        (on_init_lane)(yield_traj ?q1 ?q2)(keep_speed_traj ?q1 ?q2)(left_traj ?q1 ?q2))
 (:functions (cost)(curr_time) (time_of_traj ?q1 ?q2 - conf)(at_x ?q - conf)(at_y ?q - conf) (at_time ?q - conf)
             (obst_at_x ?o - obstacles)(obst_at_y ?o - obstacles) (obst_at_speed ?o - obstacles)
 )
@@ -41,7 +41,7 @@
                     (not (= ?first ?last)) 
                     (= (at_y ?after_first)(obst_at_y ?o)) 
                     (>= (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
-                    (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 6.5)
+                    (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 7)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -59,7 +59,7 @@
                     (not (= ?first ?last)) 
                     (= (at_y ?after_first)(obst_at_y ?o))  
                     (< (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
-                    (>= (-  (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) ) (at_x ?after_first)  ) 6.5) 
+                    (>= (-  (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) ) (at_x ?after_first)  ) 7) 
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -93,7 +93,7 @@
                      (> (at_y ?after_first)(obst_at_y ?o))
                      (< (- (at_y ?after_first) (obst_at_y ?o) ) 3.5)  
                      (< (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
-                     (>= (-  (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) ) (at_x ?after_first)  ) 6.5)
+                     (>= (-  (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) ) (at_x ?after_first)  ) 7)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -111,7 +111,7 @@
                      (> (at_y ?after_first)(obst_at_y ?o))
                      (< (- (at_y ?after_first) (obst_at_y ?o) ) 3.5)  
                      (>= (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
-                     (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 6.5)
+                     (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 7)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -146,7 +146,7 @@
                      (< (at_y ?after_first)(obst_at_y ?o))  
                      (< (- (obst_at_y ?o) (at_y ?after_first) ) 3.5)
                      (>= (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
-                     (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 6.5)
+                     (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 7)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -164,7 +164,7 @@
                      (< (at_y ?after_first)(obst_at_y ?o))  
                      (< (- (obst_at_y ?o) (at_y ?after_first) ) 3.5)
                      (< (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
-                     (>= (-  (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) ) (at_x ?after_first)  ) 6.5)
+                     (>= (-  (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) ) (at_x ?after_first)  ) 7)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
