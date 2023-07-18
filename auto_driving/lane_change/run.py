@@ -267,7 +267,7 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 def main():
     stg.init()  
 
-    counter_exp = 10
+    counter_exp = 50
     statistics_arr = np.zeros(counter_exp)
     count_success = 0
     OPM_values = []
@@ -361,6 +361,18 @@ def main():
         plan_found = False
         new_obs = obstacles
         final_traj = FrenetPath()
+        ###
+        final_traj.x = [q0[0]]
+        final_traj.s = [q0[0]]
+        final_traj.y = [q0[1]]
+        final_traj.s_d = [q0[2]]
+        final_traj.s_dd = [0]
+        final_traj.yaw = [0]
+        
+        final_traj.s_ddd = [0]
+        final_traj.d_dd = [0]
+        final_traj.d_ddd = [0]
+        #####
         reached_end = False
         total_excution_time = 0
         cycle_count = 0

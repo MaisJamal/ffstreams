@@ -69,7 +69,7 @@ class Statistics:
 
         data['TTC'] = self.TTC
         #for key in data.keys() :
-         #   print(key, "len " , len(data[key]))
+        #    print(key, "len " , len(data[key]))
 
         df = pd.DataFrame(data=data)
         

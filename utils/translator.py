@@ -344,7 +344,7 @@ def translate_to_pddl_change_lane(direction,confs,traj_dict,traj_array,obstacles
     f.close()
 
 
-def translate_to_pddl_keep_lane(direction,confs,traj_dict,traj_type,traj_array,obstacles,file_name,problem_file_name):
+def translate_to_pddl_keep_lane(there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_name,problem_file_name):
     #INIT_SPEED = 20 / 3.6
     #all_y=[stg.wy_middle_lower_lane[0],stg.wy_middle_upper_lane[0]]
     total_time = 10 #seconds
@@ -402,9 +402,11 @@ def translate_to_pddl_keep_lane(direction,confs,traj_dict,traj_type,traj_array,o
     f.write("\t\t(= (curr_time) 0)\n")
     f.write("\t\t(= (cost) 0)\n")
     f.write("\t\t(on_init_lane)\n")
+    #overtaking
+    if (there_is_front_obs):
+        f.write("\t\t(there_is_front_obs)\n")
+
     f.write("\t\t(idle)\n\n")
-    
-    
     for i in range(len(confs)):
         for j in range(len(confs)):
             if traj_array[i][j]:
@@ -419,6 +421,8 @@ def translate_to_pddl_keep_lane(direction,confs,traj_dict,traj_type,traj_array,o
                     f.write("\t\t(left_traj q%d q%d)\n\n"  % (i,j))
                 elif tj_type == "CHANGE_RIGHT":
                     f.write("\t\t(right_traj q%d q%d)\n\n"  % (i,j))
+                elif tj_type == "OVERTAKE":
+                    f.write("\t\t(overtake_traj q%d q%d)\n\n"  % (i,j))
 
                 f.write("\t\t(next q%d q%d_%d_1 q%d)\n" % (i,i,j,j))
 

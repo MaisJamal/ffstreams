@@ -2,7 +2,7 @@ from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
 import utils.settings as stg
-from ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed
+from ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
 import random
 from random import choices
 from numpy.linalg import norm
@@ -23,7 +23,7 @@ def get_yield(q1,acc0,curr_dl,curr_ddl,front_obstacle): # stream for generating 
         dec_y = stg.wy_middle_lower_lane[0]
         dec_x = b_x - 3 * q1[2]  # q1---------*dec------*obs--q2  # delta_x = delta_t(3s) * v_q1
         dec_v = q1[2]
-        
+        #b_speed = max(b_speed,q1[2]-2)
         thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,b_speed)
         
         if(thereIsTraj):
@@ -46,6 +46,45 @@ def get_follow_speed(q1,acc0,curr_dl,curr_ddl,desired_v): # stream for generatin
         else:
             yield None
 
+
+def get_follow_speed_overtake(q1,acc0,curr_dl,curr_ddl,desired_v): # stream for generating YIELD trajectory  # TODO
+    global wy_middle_upper_lane
+    while True:
+        dec_y = stg.wy_middle_upper_lane[0]
+        
+        thereIsTraj,traj = get_traj_follow_speed(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_y,desired_v)
+
+        if(thereIsTraj):
+            yield (traj, )
+            
+        else:
+            yield None
+
+def get_change_to_left(q1,acc0,curr_dl,curr_ddl,desired_v): # stream for generating YIELD trajectory  # TODO
+    global wy_middle_upper_lane
+    while True:
+        dec_y = stg.wy_middle_upper_lane[0]
+        
+        thereIsTraj,traj = get_traj_change_lane_overtake(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_y,desired_v)
+
+        if(thereIsTraj):
+            yield (traj, )
+            
+        else:
+            yield None
+
+def get_change_to_right(q1,acc0,curr_dl,curr_ddl,desired_v): # stream for generating YIELD trajectory  # TODO
+    global wy_middle_lower_lane
+    while True:
+        dec_y = stg.wy_middle_lower_lane[0]
+        
+        thereIsTraj,traj = get_traj_change_lane_overtake(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_y,desired_v)
+
+        if(thereIsTraj):
+            yield (traj, )
+            
+        else:
+            yield None
 
 def get_traj_change_gen(q1,acc0,curr_dl,curr_ddl,target_y,target_speed):#,tim1):
     
