@@ -21,6 +21,12 @@
             "type": "python",
             "request": "launch",
             "module": "auto_driving.keep_lane.run"
+        },
+        {
+            "name": "Python: CommonRoad",
+            "type": "python",
+            "request": "launch",
+            "module": "auto_driving.keep_lane.run_commonR_scen"
         }
     ]
 }
