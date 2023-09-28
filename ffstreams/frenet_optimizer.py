@@ -64,7 +64,7 @@ ROBOT_RADIUS = 2.0  # robot radius [m]
 
 # cost weights
 K_J = 0.1
-K_T = 0.1
+K_T = 0.9
 K_D = 1.0
 K_LAT = 1.0
 K_LON = 1.0
@@ -759,15 +759,24 @@ def get_traj_yield(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,target_s
     global MAX_T
     global MIN_T 
 
-    MAX_T = 5.1
-    MIN_T = 5
+    low_acc = False
+    if low_acc:
+        MAX_T = 5.1
+        MIN_T = 5
 
-    #MAX_T = 10
-    #MIN_T = 4
+        #MAX_T = 10
+        #MIN_T = 4
 
 
-    MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
-    MAX_ACCEL = 1  # maximum acceleration [m/ss]
+        MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+        MAX_ACCEL = 1  # maximum acceleration [m/ss]
+    else:
+        MAX_T = 5.1
+        MIN_T = 5
+
+        MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+        MAX_ACCEL = 15  # maximum acceleration [m/ss]
+
     ob = None 
     
 
@@ -833,17 +842,24 @@ def get_traj_follow_speed(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,target_spe
     global DELTA_TARGET_S
     global MAX_T
     global MIN_T 
+    low_acc = False
+    if low_acc:
+        MAX_T = 5.1
+        MIN_T = 5
 
-    MAX_T = 5.1
-    MIN_T = 5
-
-    #MAX_T = 10
-    #MIN_T = 5
-    target_x = 20 # any target
-    MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
-    MAX_ACCEL = 1  # maximum acceleration [m/ss]
+        #MAX_T = 10
+        #MIN_T = 5
+        
+        MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+        MAX_ACCEL = 1  # maximum acceleration [m/ss]
+    else:
+        MAX_T = 5.1
+        MIN_T = 5
+        
+        MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+        MAX_ACCEL = 15  # maximum acceleration [m/ss]
     ob = None 
-    
+    target_x = 20 # any target
 
     if (target_y==stg.wy_middle_lower_lane[0]):
         csp = 1
@@ -906,15 +922,25 @@ def get_traj_change_lane_overtake(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,ta
     global MAX_T
     global MIN_T 
 
-   # MAX_T = 5.1
-   # MIN_T = 5
+    low_acc = False
+    if low_acc:
+        # MAX_T = 5.1
+        # MIN_T = 5
 
-    MAX_T = 10
-    MIN_T = 5
-    target_x = 20 # any target
-    MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
-    MAX_ACCEL = 1  # maximum acceleration [m/ss]
+        MAX_T = 10
+        MIN_T = 5
+        
+        MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+        MAX_ACCEL = 1  # maximum acceleration [m/ss]
+    else:
+        MAX_T = 3
+        MIN_T = 2
+        
+        MAX_SPEED = 120.0 / 3.6  # maximum speed [m/s]
+        MAX_ACCEL = 15  # maximum acceleration [m/ss]
+
     ob = None 
+    target_x = 20 # any target
     
 
     if (target_y==stg.wy_middle_lower_lane[0]):

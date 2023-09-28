@@ -215,7 +215,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
 
     trajectories = []
     # call available applicable streams
-    target_speed =min(33.33,target_speed,q0[2]+2)
+    target_speed =min(33.33,target_speed,q0[2]+8)
     follow_output = next(get_follow_speed(q0,acc0,curr_dl,curr_ddl,target_speed))
     if follow_output is not None:
         q = ARRAY([follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].s_d[-1]])
@@ -225,7 +225,6 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         traj_type[(0,conf_num)] = "FOLLOW"
         conf_num +=1
         
-
     yield_output = next(get_yield(q0,acc0,curr_dl,curr_ddl,obstacles[0])) #TODO add condition of existing front obstacle
     if yield_output is not None:
         q = ARRAY([yield_output[0].x[-1],yield_output[0].y[-1],yield_output[0].s_d[-1]])
@@ -246,120 +245,238 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         conf_num +=1
     """
     # overtaking   
-    full_traj = FrenetPath()
-    there_is_front_obs = check_front_obstacle(q0,obstacles[0])
-    #there_is_front_obs = False
-    if there_is_front_obs and not overtake_decision:
-        print("*** front obs ****")
-        print(obstacles[0][2][0],q0[2])
-        #if abs(obstacles[0][0][0]-q0[0])< 30:
-        end =5
-        if abs(obstacles[0][2][0]-q0[2])< 0.7:
-            end = -1
-            target_speed2 = q0[2] +1
-        elif  abs(obstacles[0][2][0]-q0[2]) < 1.7:
-            end = 5
-            target_speed2 = q0[2] + 2.4   
-        else:
-            target_speed2 = q0[2] + 3.4
-        #target_speed2 = q0[2] + 3.4
-        print("q1 ",q0,acc0,curr_dl,curr_ddl,target_speed2)
-        change_left_output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed2)) #TODO add condition of existing front obstacle
-        #change_left_output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed2))
-        if change_left_output is not None:
-            """
-            q_middle = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
-            change_right_output = next(get_change_to_right(q_middle,change_left_output[0].s_dd[-1],change_left_output[0].d_d[-1],change_left_output[0].d_dd[-1],target_speed2+3.4)) #TODO add condition of existing front obstacle
-            if change_right_output is not None:
-                print("*** overtaking traj ****")
-                q = ARRAY([change_right_output[0].x[-1],change_right_output[0].y[-1],change_right_output[0].s_d[-1]])
-                confs.append(q)
-                
-                #### append two trajectories
-                last_t = change_left_output[0].t[-1]
-                full_traj.t = change_left_output[0].t + [i+last_t for i in change_right_output[0].t[1:]]
-
-                full_traj.x = change_left_output[0].x + change_right_output[0].x[1:]
-                full_traj.y = change_left_output[0].y + change_right_output[0].y[1:]
-                full_traj.s = change_left_output[0].s + change_right_output[0].s[1:]
-                full_traj.s_d = change_left_output[0].s_d + change_right_output[0].s_d[1:] 
-                full_traj.s_dd = change_left_output[0].s_dd + change_right_output[0].s_dd[1:]
-                full_traj.s_ddd = change_left_output[0].s_ddd + change_right_output[0].s_ddd[1:]
-                full_traj.d_d = change_left_output[0].d_d + change_right_output[0].d_d[1:]
-                full_traj.d_dd = change_left_output[0].d_dd + change_right_output[0].d_dd[1:]
-                full_traj.d_ddd = change_left_output[0].d_ddd + change_right_output[0].d_ddd[1:]
-                full_traj.yaw = change_left_output[0].yaw + change_right_output[0].yaw[1:]
-                ####
-                overtake_traj = copy.deepcopy(full_traj)
-                overtake_counter += 1
-                ####
-                traj_dict[(0,conf_num)] = full_traj#change_right_output[0]
-                traj_array[0][conf_num] = True
-                traj_type[(0,conf_num)] = "OVERTAKE"
-                conf_num +=1
-            
-            
-            """
-            q_middle = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
-            print("q2 ",q_middle,change_left_output[0].s_dd[-1],change_left_output[0].d_d[-1],change_left_output[0].d_dd[-1],target_speed2)
-            middle_output = next(get_follow_speed_overtake(q_middle,change_left_output[0].s_dd[-1],-change_left_output[0].d_d[-1],-change_left_output[0].d_dd[-1],target_speed2+3))
-            
-            if middle_output is not None:
-                #end = 3#-1
-                q_middle2 = ARRAY([middle_output[0].x[end],middle_output[0].y[end],middle_output[0].s_d[end]])
-                
-                #### append two trajectories
-                last_t = change_left_output[0].t[-1]
-                full_traj.t = change_left_output[0].t + [i+last_t for i in middle_output[0].t[1:end]]
-
-                full_traj.x = change_left_output[0].x + middle_output[0].x[1:end]
-                full_traj.y = change_left_output[0].y + middle_output[0].y[1:end]
-                full_traj.s = change_left_output[0].s + middle_output[0].s[1:end]
-                full_traj.s_d = change_left_output[0].s_d + middle_output[0].s_d[1:end] 
-                full_traj.s_dd = change_left_output[0].s_dd + middle_output[0].s_dd[1:end]
-                full_traj.s_ddd = change_left_output[0].s_ddd + middle_output[0].s_ddd[1:end]
-                full_traj.d = change_left_output[0].d + middle_output[0].d[1:end]
-                full_traj.d_d = change_left_output[0].d_d + middle_output[0].d_d[1:end]
-                full_traj.d_dd = change_left_output[0].d_dd + middle_output[0].d_dd[1:end]
-                full_traj.d_ddd = change_left_output[0].d_ddd + middle_output[0].d_ddd[1:end]
-                full_traj.yaw = change_left_output[0].yaw + middle_output[0].yaw[1:end]
-                ####
-                print("q3 ",q_middle2,middle_output[0].s_dd[-1],middle_output[0].d_d[-1],middle_output[0].d_dd[-1],target_speed2 )
-                change_right_output = next(get_change_to_right(q_middle2,middle_output[0].s_dd[end],-middle_output[0].d_d[end],-middle_output[0].d_dd[end],middle_output[0].s_d[end] +3)) #TODO add condition of existing front obstacle
+    low_acc = False
+    if low_acc:
+        full_traj = FrenetPath()
+        there_is_front_obs = check_front_obstacle(q0,obstacles[0])
+        #there_is_front_obs = False
+        if there_is_front_obs and not overtake_decision:
+            print("*** front obs ****")
+            print(obstacles[0][2][0],q0[2])
+            #if abs(obstacles[0][0][0]-q0[0])< 30:
+            end =5
+            if abs(obstacles[0][2][0]-q0[2])< 0.7:
+                end = -1
+                target_speed2 = q0[2] +1
+            elif  abs(obstacles[0][2][0]-q0[2]) < 1.7:
+                end = 5
+                target_speed2 = q0[2] + 2.4   
+            else:
+                target_speed2 = q0[2] + 3.4
+            #target_speed2 = q0[2] + 3.4
+            print("q1 ",q0,acc0,curr_dl,curr_ddl,target_speed2)
+            change_left_output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed2)) #TODO add condition of existing front obstacle
+            #change_left_output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed2))
+            if change_left_output is not None:
+                """
+                q_middle = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
+                change_right_output = next(get_change_to_right(q_middle,change_left_output[0].s_dd[-1],change_left_output[0].d_d[-1],change_left_output[0].d_dd[-1],target_speed2+3.4)) #TODO add condition of existing front obstacle
                 if change_right_output is not None:
                     print("*** overtaking traj ****")
                     q = ARRAY([change_right_output[0].x[-1],change_right_output[0].y[-1],change_right_output[0].s_d[-1]])
                     confs.append(q)
                     
                     #### append two trajectories
-                    last_t += middle_output[0].t[end]
-                    full_traj.t = full_traj.t + [i+last_t for i in change_right_output[0].t[1:]]
+                    last_t = change_left_output[0].t[-1]
+                    full_traj.t = change_left_output[0].t + [i+last_t for i in change_right_output[0].t[1:]]
 
-                    full_traj.x = full_traj.x + change_right_output[0].x[1:]
-                    full_traj.y = full_traj.y + change_right_output[0].y[1:]
-                    full_traj.s = full_traj.s + change_right_output[0].s[1:]
-                    full_traj.s_d = full_traj.s_d + change_right_output[0].s_d[1:] 
-                    full_traj.s_dd = full_traj.s_dd + change_right_output[0].s_dd[1:]
-                    full_traj.s_ddd = full_traj.s_ddd + change_right_output[0].s_ddd[1:]
-                    full_traj.d = full_traj.d + change_right_output[0].d[1:]
-                    full_traj.d_d = full_traj.d_d + change_right_output[0].d_d[1:]
-                    full_traj.d_dd = full_traj.d_dd + change_right_output[0].d_dd[1:]
-                    full_traj.d_ddd = full_traj.d_ddd + change_right_output[0].d_ddd[1:]
-                    full_traj.yaw = full_traj.yaw + change_right_output[0].yaw[1:]
+                    full_traj.x = change_left_output[0].x + change_right_output[0].x[1:]
+                    full_traj.y = change_left_output[0].y + change_right_output[0].y[1:]
+                    full_traj.s = change_left_output[0].s + change_right_output[0].s[1:]
+                    full_traj.s_d = change_left_output[0].s_d + change_right_output[0].s_d[1:] 
+                    full_traj.s_dd = change_left_output[0].s_dd + change_right_output[0].s_dd[1:]
+                    full_traj.s_ddd = change_left_output[0].s_ddd + change_right_output[0].s_ddd[1:]
+                    full_traj.d_d = change_left_output[0].d_d + change_right_output[0].d_d[1:]
+                    full_traj.d_dd = change_left_output[0].d_dd + change_right_output[0].d_dd[1:]
+                    full_traj.d_ddd = change_left_output[0].d_ddd + change_right_output[0].d_ddd[1:]
+                    full_traj.yaw = change_left_output[0].yaw + change_right_output[0].yaw[1:]
                     ####
                     overtake_traj = copy.deepcopy(full_traj)
-                   #overtake_counter += 1
-                    print(overtake_traj.t)
-                    print("***********************************************")
-                    print("init and end speed:",overtake_traj.s_d[0],overtake_traj.s_d[-1])
-                    print(overtake_traj.x)
+                    overtake_counter += 1
                     ####
                     traj_dict[(0,conf_num)] = full_traj#change_right_output[0]
                     traj_array[0][conf_num] = True
                     traj_type[(0,conf_num)] = "OVERTAKE"
                     conf_num +=1
-            #"""
                 
+                
+                """
+                q_middle = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
+                print("q2 ",q_middle,change_left_output[0].s_dd[-1],change_left_output[0].d_d[-1],change_left_output[0].d_dd[-1],target_speed2)
+                middle_output = next(get_follow_speed_overtake(q_middle,change_left_output[0].s_dd[-1],-change_left_output[0].d_d[-1],-change_left_output[0].d_dd[-1],target_speed2+3))
+                
+                if middle_output is not None:
+                    #end = 3#-1
+                    q_middle2 = ARRAY([middle_output[0].x[end],middle_output[0].y[end],middle_output[0].s_d[end]])
+                    
+                    #### append two trajectories
+                    last_t = change_left_output[0].t[-1]
+                    full_traj.t = change_left_output[0].t + [i+last_t for i in middle_output[0].t[1:end]]
+
+                    full_traj.x = change_left_output[0].x + middle_output[0].x[1:end]
+                    full_traj.y = change_left_output[0].y + middle_output[0].y[1:end]
+                    full_traj.s = change_left_output[0].s + middle_output[0].s[1:end]
+                    full_traj.s_d = change_left_output[0].s_d + middle_output[0].s_d[1:end] 
+                    full_traj.s_dd = change_left_output[0].s_dd + middle_output[0].s_dd[1:end]
+                    full_traj.s_ddd = change_left_output[0].s_ddd + middle_output[0].s_ddd[1:end]
+                    full_traj.d = change_left_output[0].d + middle_output[0].d[1:end]
+                    full_traj.d_d = change_left_output[0].d_d + middle_output[0].d_d[1:end]
+                    full_traj.d_dd = change_left_output[0].d_dd + middle_output[0].d_dd[1:end]
+                    full_traj.d_ddd = change_left_output[0].d_ddd + middle_output[0].d_ddd[1:end]
+                    full_traj.yaw = change_left_output[0].yaw + middle_output[0].yaw[1:end]
+                    ####
+                    print("q3 ",q_middle2,middle_output[0].s_dd[-1],middle_output[0].d_d[-1],middle_output[0].d_dd[-1],target_speed2 )
+                    change_right_output = next(get_change_to_right(q_middle2,middle_output[0].s_dd[end],-middle_output[0].d_d[end],-middle_output[0].d_dd[end],middle_output[0].s_d[end] +3)) #TODO add condition of existing front obstacle
+                    if change_right_output is not None:
+                        print("*** overtaking traj ****")
+                        q = ARRAY([change_right_output[0].x[-1],change_right_output[0].y[-1],change_right_output[0].s_d[-1]])
+                        confs.append(q)
+                        
+                        #### append two trajectories
+                        last_t += middle_output[0].t[end]
+                        full_traj.t = full_traj.t + [i+last_t for i in change_right_output[0].t[1:]]
+
+                        full_traj.x = full_traj.x + change_right_output[0].x[1:]
+                        full_traj.y = full_traj.y + change_right_output[0].y[1:]
+                        full_traj.s = full_traj.s + change_right_output[0].s[1:]
+                        full_traj.s_d = full_traj.s_d + change_right_output[0].s_d[1:] 
+                        full_traj.s_dd = full_traj.s_dd + change_right_output[0].s_dd[1:]
+                        full_traj.s_ddd = full_traj.s_ddd + change_right_output[0].s_ddd[1:]
+                        full_traj.d = full_traj.d + change_right_output[0].d[1:]
+                        full_traj.d_d = full_traj.d_d + change_right_output[0].d_d[1:]
+                        full_traj.d_dd = full_traj.d_dd + change_right_output[0].d_dd[1:]
+                        full_traj.d_ddd = full_traj.d_ddd + change_right_output[0].d_ddd[1:]
+                        full_traj.yaw = full_traj.yaw + change_right_output[0].yaw[1:]
+                        ####
+                        overtake_traj = copy.deepcopy(full_traj)
+                    #overtake_counter += 1
+                        print(overtake_traj.t)
+                        print("***********************************************")
+                        print("init and end speed:",overtake_traj.s_d[0],overtake_traj.s_d[-1])
+                        print(overtake_traj.x)
+                        ####
+                        traj_dict[(0,conf_num)] = full_traj#change_right_output[0]
+                        traj_array[0][conf_num] = True
+                        traj_type[(0,conf_num)] = "OVERTAKE"
+                        conf_num +=1
+                #"""
+    ###############################################################################################################################
+    ###############################################################################################################################
+    else:
+        full_traj = FrenetPath()
+        there_is_front_obs = check_front_obstacle(q0,obstacles[0])
+        #there_is_front_obs = False
+        if there_is_front_obs and not overtake_decision:
+            print("*** front obs ****")
+            print(obstacles[0][2][0],q0[2])
+            #if abs(obstacles[0][0][0]-q0[0])< 30:
+            end =1
+            if abs(obstacles[0][2][0]-q0[2])< 0.7:
+                end = -4
+                target_speed2 = q0[2] +1
+            elif  abs(q0[2]-obstacles[0][2][0]) < 1.7:
+                end = 3
+                target_speed2 = q0[2] + 2     
+            else:
+                end =4
+                target_speed2 = q0[2] + 8.4
+            #target_speed2 = q0[2] + 3.4
+            print("q1 ",q0,acc0,curr_dl,curr_ddl,target_speed2)
+            change_left_output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed2)) #TODO add condition of existing front obstacle
+            #change_left_output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed2))
+            if change_left_output is not None:
+                """
+                q_middle = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
+                change_right_output = next(get_change_to_right(q_middle,change_left_output[0].s_dd[-1],change_left_output[0].d_d[-1],change_left_output[0].d_dd[-1],target_speed2+3.4)) #TODO add condition of existing front obstacle
+                if change_right_output is not None:
+                    print("*** overtaking traj ****")
+                    q = ARRAY([change_right_output[0].x[-1],change_right_output[0].y[-1],change_right_output[0].s_d[-1]])
+                    confs.append(q)
+                    
+                    #### append two trajectories
+                    last_t = change_left_output[0].t[-1]
+                    full_traj.t = change_left_output[0].t + [i+last_t for i in change_right_output[0].t[1:]]
+
+                    full_traj.x = change_left_output[0].x + change_right_output[0].x[1:]
+                    full_traj.y = change_left_output[0].y + change_right_output[0].y[1:]
+                    full_traj.s = change_left_output[0].s + change_right_output[0].s[1:]
+                    full_traj.s_d = change_left_output[0].s_d + change_right_output[0].s_d[1:] 
+                    full_traj.s_dd = change_left_output[0].s_dd + change_right_output[0].s_dd[1:]
+                    full_traj.s_ddd = change_left_output[0].s_ddd + change_right_output[0].s_ddd[1:]
+                    full_traj.d_d = change_left_output[0].d_d + change_right_output[0].d_d[1:]
+                    full_traj.d_dd = change_left_output[0].d_dd + change_right_output[0].d_dd[1:]
+                    full_traj.d_ddd = change_left_output[0].d_ddd + change_right_output[0].d_ddd[1:]
+                    full_traj.yaw = change_left_output[0].yaw + change_right_output[0].yaw[1:]
+                    ####
+                    overtake_traj = copy.deepcopy(full_traj)
+                    #overtake_counter += 1
+                    ####
+                    traj_dict[(0,conf_num)] = full_traj#change_right_output[0]
+                    traj_array[0][conf_num] = True
+                    traj_type[(0,conf_num)] = "OVERTAKE"
+                    conf_num +=1
+                
+                
+                """
+                q_middle = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
+                print("q2 ",q_middle,change_left_output[0].s_dd[-1],change_left_output[0].d_d[-1],change_left_output[0].d_dd[-1],target_speed2)
+                middle_output = next(get_follow_speed_overtake(q_middle,change_left_output[0].s_dd[-1],-change_left_output[0].d_d[-1],-change_left_output[0].d_dd[-1],target_speed2+10))
+                
+                if middle_output is not None:
+                    #end = 3#-1
+                    q_middle2 = ARRAY([middle_output[0].x[end],middle_output[0].y[end],middle_output[0].s_d[end]])
+                    
+                    #### append two trajectories
+                    last_t = change_left_output[0].t[-1]
+                    full_traj.t = change_left_output[0].t + [i+last_t for i in middle_output[0].t[1:end]]
+
+                    full_traj.x = change_left_output[0].x + middle_output[0].x[1:end]
+                    full_traj.y = change_left_output[0].y + middle_output[0].y[1:end]
+                    full_traj.s = change_left_output[0].s + middle_output[0].s[1:end]
+                    full_traj.s_d = change_left_output[0].s_d + middle_output[0].s_d[1:end] 
+                    full_traj.s_dd = change_left_output[0].s_dd + middle_output[0].s_dd[1:end]
+                    full_traj.s_ddd = change_left_output[0].s_ddd + middle_output[0].s_ddd[1:end]
+                    full_traj.d = change_left_output[0].d + middle_output[0].d[1:end]
+                    full_traj.d_d = change_left_output[0].d_d + middle_output[0].d_d[1:end]
+                    full_traj.d_dd = change_left_output[0].d_dd + middle_output[0].d_dd[1:end]
+                    full_traj.d_ddd = change_left_output[0].d_ddd + middle_output[0].d_ddd[1:end]
+                    full_traj.yaw = change_left_output[0].yaw + middle_output[0].yaw[1:end]
+                    ####
+                    print("q3 ",q_middle2,middle_output[0].s_dd[-1],middle_output[0].d_d[-1],middle_output[0].d_dd[-1],target_speed2 )
+                    change_right_output = next(get_change_to_right(q_middle2,middle_output[0].s_dd[end],-middle_output[0].d_d[end],-middle_output[0].d_dd[end],middle_output[0].s_d[end] +7.4)) #TODO add condition of existing front obstacle
+                    if change_right_output is not None:
+                        print("*** overtaking traj ****")
+                        q = ARRAY([change_right_output[0].x[-1],change_right_output[0].y[-1],change_right_output[0].s_d[-1]])
+                        confs.append(q)
+                        
+                        #### append two trajectories
+                        last_t += middle_output[0].t[end]
+                        full_traj.t = full_traj.t + [i+last_t for i in change_right_output[0].t[1:]]
+
+                        full_traj.x = full_traj.x + change_right_output[0].x[1:]
+                        full_traj.y = full_traj.y + change_right_output[0].y[1:]
+                        full_traj.s = full_traj.s + change_right_output[0].s[1:]
+                        full_traj.s_d = full_traj.s_d + change_right_output[0].s_d[1:] 
+                        full_traj.s_dd = full_traj.s_dd + change_right_output[0].s_dd[1:]
+                        full_traj.s_ddd = full_traj.s_ddd + change_right_output[0].s_ddd[1:]
+                        full_traj.d = full_traj.d + change_right_output[0].d[1:]
+                        full_traj.d_d = full_traj.d_d + change_right_output[0].d_d[1:]
+                        full_traj.d_dd = full_traj.d_dd + change_right_output[0].d_dd[1:]
+                        full_traj.d_ddd = full_traj.d_ddd + change_right_output[0].d_ddd[1:]
+                        full_traj.yaw = full_traj.yaw + change_right_output[0].yaw[1:]
+                        ####
+                        overtake_traj = copy.deepcopy(full_traj)
+                    #overtake_counter += 1
+                        print(overtake_traj.t)
+                        print("***********************************************")
+                        print("init and end speed:",overtake_traj.s_d[0],overtake_traj.s_d[-1])
+                        print(overtake_traj.x)
+                        ####
+                        traj_dict[(0,conf_num)] = full_traj#change_right_output[0]
+                        traj_array[0][conf_num] = True
+                        traj_type[(0,conf_num)] = "OVERTAKE"
+                        conf_num +=1
+                #"""    
     if overtake_decision:
         print(overtake_counter , len(overtake_traj.x),len(overtake_traj.y),len(overtake_traj.s_d))
         if overtake_counter >=(len(overtake_traj.x)-1) :
@@ -409,7 +526,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     #ss2 = time.time()
     #print("time for get_traj_change_gen", ss2-ss1)
     """
-    show_output =True # important2
+    show_output = False # important2
     if show_output:
         dt = 0.2
         plt.cla()
@@ -427,10 +544,10 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
             rect_patch=mpatches.Rectangle(rect[0], rect[1], rect[2])#((31,15),14,7, fill = False,color = "purple",linewidth = 2)
             plt.gca().add_patch(rect_patch)
         if follow_output is not None:
-            plt.plot(follow_output[0].x[0:], follow_output[0].y[0:], "-r")
+            plt.plot(follow_output[0].x[0:], follow_output[0].y[0:], "-g")
             plt.plot(follow_output[0].x[0],follow_output[0].y[0], "vc")
         if yield_output is not None:
-            plt.plot(yield_output[0].x[0:], yield_output[0].y[0:], "-g")
+            plt.plot(yield_output[0].x[0:], yield_output[0].y[0:], "-r")
             plt.plot(yield_output[0].x[0],yield_output[0].y[0], "vc")
         if len(full_traj.x) >0: 
             print(len(full_traj.x),len(full_traj.y))
@@ -505,7 +622,7 @@ def main():
     stg.init()  
     global overtake_decision
     global overtake_counter
-    counter_exp = 100
+    counter_exp = 50
     statistics_arr = np.zeros(counter_exp)
     overtake_or_yield = np.zeros(counter_exp) # 1 for overtake, 2 for yield then overtake
     count_success = 0
@@ -562,7 +679,7 @@ def main():
                     ((obs6_x, obs6_y),(5.5, 2.5), (obs6_v, 0))]
         """
         # two way scenario
-        obs_opposite_x = random.uniform(50,350)#100#random.uniform(-85.0,85.0)
+        obs_opposite_x = random.uniform(100,350)#100#random.uniform(-85.0,85.0)
         obs_opposite_v = random.uniform(-4.0,-12.0)#-5#random.uniform(-10.0,-12.0)
         obs2_a = 0
 

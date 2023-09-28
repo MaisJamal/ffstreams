@@ -24,7 +24,12 @@ def get_yield(q1,acc0,curr_dl,curr_ddl,front_obstacle): # stream for generating 
         dec_x = b_x - 3 * q1[2]  # q1---------*dec------*obs--q2  # delta_x = delta_t(3s) * v_q1
         dec_v = q1[2]
         #b_speed = max(b_speed,q1[2]-2)
-        thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,b_speed)
+        low_acc = False
+        if low_acc:
+            thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,b_speed)
+        else:
+            v = max(q1[2]-8,b_speed)
+            thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,v)
         
         if(thereIsTraj):
             yield (traj, )
