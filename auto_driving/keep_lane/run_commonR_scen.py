@@ -631,12 +631,13 @@ def main():
     folder = time.strftime("%Y%m%d-%H%M%S")
 
     #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"
-    #scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
-    scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"
-    init_x, init_y,init_heading,init_speed = extractor.extract_data(scene_path)
+    scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
+    #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"
+    init_x, init_y,init_heading,init_speed,init_scene_obstacles = extractor.extract_data(scene_path)
     print(init_x, init_y,init_heading,init_speed)
+    print(init_scene_obstacles)
 
-    
+
     ############ change to left lane problem ###############
 
     for exp in range(counter_exp):

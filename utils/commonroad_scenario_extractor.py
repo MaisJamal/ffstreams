@@ -1,10 +1,11 @@
 # import functions to read xml file and visualize commonroad objects
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
+import math
 
 
 ################ collision checker ##############################
@@ -47,12 +48,53 @@ def get_scenario_dynamic_obstacles_list(scenario):
                 raise Exception('Unknown dynamic obstacle prediction type: ' + str(type(dyn_obst.prediction)))
     return dyn_obstacles_list
 
+def GetRotationAndLaneWidth(scenario):
+    # get lane rotation angle (theta)
+    delta_x = scenario.lanelet_network.lanelets[0].left_vertices[-1][0] - scenario.lanelet_network.lanelets[0].left_vertices[0][0]
+    delta_y = scenario.lanelet_network.lanelets[0].left_vertices[-1][1] - scenario.lanelet_network.lanelets[0].left_vertices[0][1]
+    theta_rad = math.atan(delta_y/delta_x)
+    theta = math.degrees(theta_rad)
+    # get lane width
+    print("raw width ",(scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1]))
+    lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
+
+    return theta,lane_width
 ################################################################
 
-
-
-
 def extract_data(file_path):
+    # read in the scenario and planning problem set
+    scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
+    planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
+
+    # get ego initial state in the scenario
+    INIT_STATE = planning_problem.initial_state
+    
+    # get dynamic obstacles in the scenario
+    obstacles = []
+    for dyn_obst in scenario.dynamic_obstacles:
+        obs_pos = dyn_obst.initial_state.position
+        obs_orien = dyn_obst.initial_state.orientation
+        obs_vel = dyn_obst.initial_state.velocity
+        #obs_acc = dyn_obst.initial_state.acceleration
+        obstacles.append((obs_pos[0],obs_pos[1],obs_orien,obs_vel))
+    
+    theta, lane_width = GetRotationAndLaneWidth(scenario)
+    
+    print("theta in degrees is ", theta)
+    print("lane width is ", lane_width)
+
+
+    # plot the planning problem and the scenario for the fifth time step
+    plt.figure(figsize=(25, 10))
+    rnd = MPRenderer()
+    scenario.draw(rnd)#(rnd, draw_params={'time_begin': 5})
+    planning_problem_set.draw(rnd)
+    rnd.render()
+    plt.show()
+
+    return INIT_STATE.position[0],INIT_STATE.position[1],INIT_STATE.orientation,INIT_STATE.velocity , obstacles
+
+def all_functions(file_path):
     # generate path of the file to be opened
     # read in the scenario and planning problem set
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
