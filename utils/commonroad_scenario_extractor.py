@@ -62,6 +62,7 @@ def GetRotationAndLaneWidth(scenario):
 ################################################################
 
 def extract_data(file_path):
+    SHIFT_IN_FFSTREAM_Y = 48.25
     # read in the scenario and planning problem set
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
@@ -69,20 +70,29 @@ def extract_data(file_path):
     # get ego initial state in the scenario
     INIT_STATE = planning_problem.initial_state
     
+
+
+    # usefull parameters
+
+    theta, lane_width = GetRotationAndLaneWidth(scenario)  #theta in degrees
+    
+    print("theta in degrees is ", theta)
+    print("lane width is ", lane_width)
+    
     # get dynamic obstacles in the scenario
     obstacles = []
     for dyn_obst in scenario.dynamic_obstacles:
         obs_pos = dyn_obst.initial_state.position
-        obs_orien = dyn_obst.initial_state.orientation
+        obs_pos[1] = obs_pos[1] + SHIFT_IN_FFSTREAM_Y
+        obs_orien = dyn_obst.initial_state.orientation - theta
         obs_vel = dyn_obst.initial_state.velocity
         #obs_acc = dyn_obst.initial_state.acceleration
-        obstacles.append((obs_pos[0],obs_pos[1],obs_orien,obs_vel))
-    
-    theta, lane_width = GetRotationAndLaneWidth(scenario)
-    
-    print("theta in degrees is ", theta)
-    print("lane width is ", lane_width)
+        #obstacles.append((obs_pos[0],obs_pos[1],obs_orien,obs_vel))
+        obstacles.append(((obs_pos[0], obs_pos[1]), (5.5, 2.5), (obs_vel, 0)))
 
+    #####################################
+    ego_orientation_ff = INIT_STATE.orientation - theta
+    ego_y_ff = INIT_STATE.position[1] + SHIFT_IN_FFSTREAM_Y
 
     # plot the planning problem and the scenario for the fifth time step
     plt.figure(figsize=(25, 10))
@@ -92,7 +102,7 @@ def extract_data(file_path):
     rnd.render()
     plt.show()
 
-    return INIT_STATE.position[0],INIT_STATE.position[1],INIT_STATE.orientation,INIT_STATE.velocity , obstacles
+    return INIT_STATE.position[0],ego_y_ff,ego_orientation_ff,INIT_STATE.velocity , obstacles , theta, lane_width
 
 def all_functions(file_path):
     # generate path of the file to be opened

@@ -235,7 +235,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         traj_type[(0,conf_num)] = "YIELD"
         conf_num +=1
     ## change lane to left
-    """
+    
     change_left_output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed)) 
     if change_left_output is not None:
         q = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
@@ -244,7 +244,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         traj_array[0][conf_num] = True
         traj_type[(0,conf_num)] = "CHANGE_LEFT"
         conf_num +=1
-    """
+    
     # overtaking   
     low_acc = False
     if low_acc:
@@ -366,6 +366,10 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     else:
         full_traj = FrenetPath()
         there_is_front_obs = check_front_obstacle(q0,obstacles[0])
+        LANE_CHANGE = True
+        if LANE_CHANGE:
+            there_is_front_obs = False
+            print("There is no front obstacle.")
         #there_is_front_obs = False
         if there_is_front_obs and not overtake_decision:
             print("*** front obs ****")
@@ -527,7 +531,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     #ss2 = time.time()
     #print("time for get_traj_change_gen", ss2-ss1)
     """
-    show_output = False # important2
+    show_output = True # important2
     if show_output:
         dt = 0.2
         plt.cla()
@@ -550,6 +554,9 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         if yield_output is not None:
             plt.plot(yield_output[0].x[0:], yield_output[0].y[0:], "-r")
             plt.plot(yield_output[0].x[0],yield_output[0].y[0], "vc")
+        if LANE_CHANGE and change_left_output is not None:
+            plt.plot(change_left_output[0].x[0:], change_left_output[0].y[0:], "-b")
+            plt.plot(change_left_output[0].x[0],change_left_output[0].y[0], "vc")
         if len(full_traj.x) >0: 
             print(len(full_traj.x),len(full_traj.y))
             plt.plot(full_traj.x[0:], full_traj.y[0:], "-b")
@@ -619,11 +626,20 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 
     return obstacles_new
 
+def call_ffstreams_once(init_x, init_y,init_heading,init_speed,init_scene_obstacles,scen_rotation, lane_width,target_y,target_speed):
+    q0 = [init_x, init_y,init_speed]
+    acc0 = 0
+    curr_dl = 0
+    curr_ddl = 0
+
+    trajectories,confs,traj_dict,final_traj_type = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,init_scene_obstacles)
+    return trajectories,confs,traj_dict,final_traj_type
+
 def main():
     stg.init()  
     global overtake_decision
     global overtake_counter
-    counter_exp = 50
+    counter_exp = 1
     statistics_arr = np.zeros(counter_exp)
     overtake_or_yield = np.zeros(counter_exp) # 1 for overtake, 2 for yield then overtake
     count_success = 0
@@ -633,9 +649,19 @@ def main():
     #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"
     scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
     #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"
-    init_x, init_y,init_heading,init_speed,init_scene_obstacles = extractor.extract_data(scene_path)
+    init_x, init_y,init_heading,init_speed,init_scene_obstacles,scen_rotation, lane_width = extractor.extract_data(scene_path)
+    #### debug ############
+    print("ego init x  ,  y  ,   heading   , v  : ")
     print(init_x, init_y,init_heading,init_speed)
-    print(init_scene_obstacles)
+    for o in init_scene_obstacles:
+        print("obstacle  init x  ,  y  ,   heading   , v  : ")
+        print(o)
+    #######################
+    target_y = init_y + lane_width
+    target_speed = init_speed + 2
+    trajectories,confs,traj_dict,final_traj_type = call_ffstreams_once(init_x, init_y,init_heading,init_speed,init_scene_obstacles,scen_rotation, lane_width,target_y, target_speed)
+    print("Trajectory type: ")
+    print(final_traj_type)
 
 
     ############ change to left lane problem ###############
