@@ -65,9 +65,14 @@ class Statistics:
             data['obs_'+ str(i+1) +'_a_s'] =  [self.other_obs_a_s[i] ] * length
             data['obs_'+ str(i+1) +'_l'] =  self.other_obs_l[i]
 
-        data['decisions'] = self.decisions + ["NONE"]
+        if (len(self.decisions) < 1):   # lane_change scenario
+            data['decisions'] = len(self.t) * ["NONE"]
+        else: #overtake & keep lane scenario
+            data['decisions'] = self.decisions + ["NONE"]
 
         data['TTC'] = self.TTC
+        
+        ##### debug #####
         #for key in data.keys() :
         #    print(key, "len " , len(data[key]))
 
