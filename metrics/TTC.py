@@ -36,7 +36,7 @@ import utils.settings as stg
 
 
 def calc_TTC_metric(x_following, v_following , x_leading,v_leading):
-    stg.init()
+    #stg.init()
     l = stg.CAR_LENGTH
     if v_leading >= v_following:
         return float('inf')
@@ -48,6 +48,15 @@ def calc_TTC_traj(s , v_s , front_obs_s, front_obs_v_s):
     TTCs = []
     for i in range(len(s)):
         ttc = calc_TTC_metric(s[i],v_s[i],front_obs_s[i],front_obs_v_s[i])
+        TTCs.append(ttc)
+    return TTCs
+
+def calc_TTC_traj_lane_change(s , v_s , other_obs_s, other_obs_v_s,other_obs_no):
+    TTCs = []
+    for i in range(len(s)):
+        ttc = float('inf')
+        for j in range(other_obs_no):
+            ttc = min(ttc, calc_TTC_metric(s[i],v_s[i],other_obs_s[j][i],other_obs_v_s[j][i]))
         TTCs.append(ttc)
     return TTCs
 

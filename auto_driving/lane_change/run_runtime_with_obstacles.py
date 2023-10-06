@@ -262,7 +262,8 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
     return obstacles_new
 
 def main():
-    stg.init()  
+    lane_width = 3.5
+    stg.init(lane_width)   
 
     counter_exp = 11# 50
     statistics_arr = np.zeros(counter_exp)

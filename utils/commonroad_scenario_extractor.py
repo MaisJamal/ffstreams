@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
 import math
-
+import copy
+import os
 
 ################ collision checker ##############################
 import numpy as np
@@ -14,9 +15,19 @@ import commonroad_dc.pycrcc as pycrcc
 from commonroad_dc.boundary import boundary
 from time import time
 from commonroad_dc.collision.trajectory_queries import trajectory_queries
+from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.obstacle import DynamicObstacle, ObstacleType
+from vehiclemodels import parameters_vehicle3
+from commonroad.geometry.shape import Rectangle
+
+#from commonroad.visualization.draw_params import DynamicObstacleParams
+
 from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import create_collision_checker, create_collision_object
 from commonroad.prediction.prediction import TrajectoryPrediction, SetBasedPrediction
 
+
+SHIFT_IN_FFSTREAM_Y = 48.25
+SCENARIO_ROTATION_DEGREES = 0
 
 def get_trajectory_list(loaded, obb_hull_preprocess=True):
     traj_matrix=loaded["trajectories"].reshape(1000,-1)
@@ -59,37 +70,65 @@ def GetRotationAndLaneWidth(scenario):
     lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
 
     return theta,lane_width
+
+
+def rotate(origin, point, angle):
+    """
+    Rotate a point counterclockwise by a given angle around a given origin.
+
+    The angle should be given in radians.
+    """
+    ox, oy = origin
+    px, py = point
+
+    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+    qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+    return qx, qy
 ################################################################
 
 def extract_data(file_path):
-    SHIFT_IN_FFSTREAM_Y = 48.25
+    global SHIFT_IN_FFSTREAM_Y
+    global SCENARIO_ROTATION_DEGREES
     # read in the scenario and planning problem set
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
 
     # get ego initial state in the scenario
     INIT_STATE = planning_problem.initial_state
-    
-
 
     # usefull parameters
-
     theta, lane_width = GetRotationAndLaneWidth(scenario)  #theta in degrees
     
+    SCENARIO_ROTATION_DEGREES = theta
+
     print("theta in degrees is ", theta)
     print("lane width is ", lane_width)
     
     # get dynamic obstacles in the scenario
-    obstacles = []
+    total_time_steps = scenario.dynamic_obstacles[0].prediction.final_time_step
+    print("total_time_steps: ",total_time_steps)
+    future_trajectories_obstacles = []
+    init_obstacles = []
     for dyn_obst in scenario.dynamic_obstacles:
+        
         obs_pos = dyn_obst.initial_state.position
         obs_pos[1] = obs_pos[1] + SHIFT_IN_FFSTREAM_Y
         obs_orien = dyn_obst.initial_state.orientation - theta
         obs_vel = dyn_obst.initial_state.velocity
         #obs_acc = dyn_obst.initial_state.acceleration
         #obstacles.append((obs_pos[0],obs_pos[1],obs_orien,obs_vel))
-        obstacles.append(((obs_pos[0], obs_pos[1]), (5.5, 2.5), (obs_vel, 0)))
-
+        init_obstacles.append(((obs_pos[0], obs_pos[1]), (5.5, 2.5), (obs_vel, 0)))
+        traj = []
+        for i in range(total_time_steps):
+            p_x = dyn_obst.state_at_time(i).position[0]
+            p_y = dyn_obst.state_at_time(i).position[1] + SHIFT_IN_FFSTREAM_Y
+            angle = -1*math.radians(SCENARIO_ROTATION_DEGREES)
+            p_x , p_y = rotate((0,0),(p_x,p_y),angle)
+            p_v = dyn_obst.state_at_time(i).velocity
+            traj.append((p_x,p_y,p_v))
+        future_trajectories_obstacles.append(traj)
+        
+    #print(future_trajectories_obstacles) ##  [[ (obs1_x1,obs1_y1,obs1_v1),(obs1_x2,obs1_y2,obs1_v2), ... ],[(obs2_x1,obs2_y1,obs2_v1),(obs2_x2,obs2_y2,obs2_v2) , ...]]
     #####################################
     ego_orientation_ff = INIT_STATE.orientation - theta
     ego_y_ff = INIT_STATE.position[1] + SHIFT_IN_FFSTREAM_Y
@@ -102,7 +141,83 @@ def extract_data(file_path):
     rnd.render()
     plt.show()
 
-    return INIT_STATE.position[0],ego_y_ff,ego_orientation_ff,INIT_STATE.velocity , obstacles , theta, lane_width
+    return INIT_STATE.position[0],ego_y_ff,ego_orientation_ff,INIT_STATE.velocity , init_obstacles , theta, lane_width, future_trajectories_obstacles,total_time_steps
+
+def draw_traj_with_scenario(trajectory,file_path):
+
+    global SHIFT_IN_FFSTREAM_Y
+    global SCENARIO_ROTATION_DEGREES
+
+    # time step in CommonRoad is 0.1 second
+    scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
+    planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
+
+    initial_state = planning_problem.initial_state
+    initial_state.time_step = 0
+    state_list = []
+
+    some_state = initial_state
+    N = len(trajectory.x)
+    print("len of traj is ",N)
+    i = 0
+    while i < N*2:
+        # compute new position
+        # add new state to state_list
+        some_state=copy.deepcopy(initial_state)
+        p_x = trajectory.x[int(i/2)]
+        p_y = trajectory.y[int(i/2)] - SHIFT_IN_FFSTREAM_Y 
+        angle = math.radians(SCENARIO_ROTATION_DEGREES)
+        p_x , p_y = rotate((0,0),(p_x,p_y),angle)
+        p_yaw = trajectory.yaw[int(i/2)]
+        some_state.position[0] = p_x
+        some_state.position[1] = p_y
+        some_state.orientation = p_yaw   # should it be in degrees??!! #TOCHECK
+        some_state.time_step = i
+        state_list.append(some_state)
+        i+=2
+    
+    #for s in state_list:
+    #    print("*****",s)
+    vehicle3 = parameters_vehicle3.parameters_vehicle3()
+    ego_vehicle_shape = Rectangle(length=vehicle3.l, width=vehicle3.w)
+    # create the planned trajectory starting at time step 1
+    ego_vehicle_trajectory = Trajectory(initial_time_step=2, state_list=state_list[1:])
+    # create the prediction using the planned trajectory and the shape of the ego vehicle
+    ego_vehicle_prediction = TrajectoryPrediction(trajectory=ego_vehicle_trajectory,shape=ego_vehicle_shape)
+    # the ego vehicle can be visualized by converting it into a DynamicObstacle
+    ego_vehicle_type = ObstacleType.CAR
+    ego_vehicle = DynamicObstacle(obstacle_id=100, obstacle_type=ego_vehicle_type,
+                              obstacle_shape=ego_vehicle_shape, initial_state=initial_state,
+                              prediction=ego_vehicle_prediction)
+    #ego_params = DynamicObstacleParams()
+    #ego_params.vehicle_shape.occupancy.shape.facecolor = "g"
+    road_boundary_obstacle, road_boundary_sg_rectangles=boundary.create_road_boundary_obstacle(scenario)
+
+    # plot the planning problem and the scenario for the fifth time step
+    max_time_step = min(N*2 , 32)
+    #draw_params = {'dynamic_obstacle': {'shape': {'rectangle': {'facecolor': 'g'}}}}
+    #gif_path = os.path.join(os.getcwd(), os.path.dirname(__file__), 'gifs/tut2.gif')
+    
+    #rnd = MPRenderer()
+    #rnd.create_video([scenario, ego_vehicle], gif_path, 2, 20, draw_params=draw_params, dt=1)
+    for i in range(0, max_time_step ,2):
+        plt.figure(figsize=(25, 10))
+        rnd = MPRenderer()
+        scenario.draw(rnd, draw_params={'time_begin': i})
+        road_boundary_sg_rectangles.draw(rnd)
+        ego_vehicle.draw(rnd, draw_params={'facecolor': 'green','time_begin': i})
+        planning_problem_set.draw(rnd)
+        rnd.render()
+        plt.show()
+    """
+    plt.figure(figsize=(25, 10))
+    rnd = MPRenderer()
+    scenario.draw(rnd, draw_params={'time_begin': 5})
+    ego_vehicle.draw(rnd, draw_params={'facecolor': 'green'})
+    planning_problem_set.draw(rnd)
+    rnd.render()
+    plt.show()
+    """
 
 def all_functions(file_path):
     # generate path of the file to be opened
@@ -126,9 +241,37 @@ def all_functions(file_path):
         obs_vel = dyn_obst.initial_state.velocity
         #obs_acc = dyn_obst.initial_state.acceleration
         #print("dyn obs * pos,orient,vel,acc:", obs_pos ,obs_orien,obs_vel,obs_acc)
+    #################################################################
+    initial_state = planning_problem.initial_state
+    initial_state.time_step = 0
+    state_list = []
+    
+    orientation = initial_state.orientation
+    some_state = initial_state
+    for i in range(4):
+        # compute new position
+        # add new state to state_list
+        some_state=copy.deepcopy(initial_state)
+        some_state.position[0] = i
+        some_state.time_step = i
+        state_list.append(some_state)
+    
+    #for s in state_list:
+    #    print("*****",s)
+    vehicle3 = parameters_vehicle3.parameters_vehicle3()
+    ego_vehicle_shape = Rectangle(length=vehicle3.l, width=vehicle3.w)
+    # create the planned trajectory starting at time step 1
+    ego_vehicle_trajectory = Trajectory(initial_time_step=1, state_list=state_list[1:])
+    # create the prediction using the planned trajectory and the shape of the ego vehicle
+    ego_vehicle_prediction = TrajectoryPrediction(trajectory=ego_vehicle_trajectory,shape=ego_vehicle_shape)
 
-
-
+    # the ego vehicle can be visualized by converting it into a DynamicObstacle
+    ego_vehicle_type = ObstacleType.CAR
+    ego_vehicle = DynamicObstacle(obstacle_id=100, obstacle_type=ego_vehicle_type,
+                              obstacle_shape=ego_vehicle_shape, initial_state=initial_state,
+                              prediction=ego_vehicle_prediction)
+    #ego_params = DynamicObstacleParams()
+    #ego_params.vehicle_shape.occupancy.shape.facecolor = "g"
     ################### collision checker #########################
     data=np.load("/home/mais/testCommonRoad/commonroad_io/commonroad/tutorials/collision_checker/USA_US101-3_3_T-1_waypoints.npz")
     print("data: ",data)
@@ -137,6 +280,8 @@ def all_functions(file_path):
 
     trajectories = get_trajectory_list(loaded_data)
     waypoints=loaded_data["trajectories"]
+    #print(" waypoints : ", waypoints)
+    #print(" start_time_step : ", loaded_data["start_time_step"])
     car_shape=loaded_data["car_shape"]
     car_half_length, car_half_width = (car_shape/2)
 
@@ -145,12 +290,13 @@ def all_functions(file_path):
     road_polygons = boundary.create_road_polygons(scenario, method='whole_polygon', triangulate=False)
 
     # Draw an exemplary part of trajectory batch (here: 50 trajectories) and the road boundary
-    n_traj_draw=50
+    n_traj_draw=1
     offset=350
 
     rnd = MPRenderer(figsize=(25, 10))
     scenario.draw(rnd)
     road_boundary_sg_rectangles.draw(rnd)
+    ego_vehicle.draw(rnd, draw_params={'facecolor': 'green'})
     for tvo in trajectories[offset:offset+n_traj_draw]:
         tvo.draw(rnd, draw_params={'facecolor': 'green'})
     rnd.render()
@@ -180,10 +326,6 @@ def all_functions(file_path):
     print("%s out of %s trajectories do not collide with the other vehicles" % (res_dynamic.count(-1), len(trajectories)))
     print("Time for %s trajectory checks: " % (len(trajectories)) + str((cur_time_2-cur_time_1)/num_trials)+ " sec.")
     ############################################################
-
-
-
-
 
 
     # plot the planning problem and the scenario for the fifth time step

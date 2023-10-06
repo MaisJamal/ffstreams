@@ -196,9 +196,9 @@ def calc_global_paths(fplist, csp):
         for i in range(len(fp.s)):
             ######
             if csp == 1:
-                ix, iy = fp.s[i] , 48.25
+                ix, iy = fp.s[i] , stg.wy_middle_lower_lane[0]
             else:
-                ix, iy = fp.s[i] , 51.75
+                ix, iy = fp.s[i] , stg.wy_middle_upper_lane[0]
             #####
             #ix, iy = csp.calc_position(fp.s[i])
             if ix is None:
@@ -628,7 +628,7 @@ def get_traj_change_lane(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_x,target_y,ta
             #print("path y j=0 , target y: ",path.y[j] , target_y)
             #if path.x[j] >= target_x :
                 
-                if abs(path.y[j] - target_y)<=0.0001:#np.hypot(path.x[j] - target_x, path.y[j] - target_y) <= 1.0:
+                if abs(path.y[j] - target_y)<=0.01:#np.hypot(path.x[j] - target_x, path.y[j] - target_y) <= 1.0:
                     final_path = True
                     #print("Goal was reached")
                     if abs(TARGET_SPEED - path.s_d[j]) <= 0.2:

@@ -24,8 +24,6 @@ import utils.settings as stg
 import time
 from utils.translator import translate_to_pddl_change_lane,translate_to_pddl_2_1, translate_to_pddlplus
 from utils.statistics import Statistics
-import utils.commonroad_scenario_extractor as extractor
-from auto_driving.keep_lane.keep_lane_streams import get_change_to_left
 
 ARRAY = np.array
 
@@ -182,11 +180,11 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     trajectories = []
     
     #ss1 = time.time()
-    output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed))#get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed))#(
+    output = next(get_traj_change_gen(q0,acc0,curr_dl,curr_ddl,target_y,target_speed))
     #ss2 = time.time()
     #print("time for get_traj_change_gen", ss2-ss1)
 
-    show_output = True  # important
+    show_output = False  # important
     if show_output:
         dt = 0.2
         plt.cla()
@@ -266,19 +264,9 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 
     return obstacles_new
 
-
-def call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,init_scene_obstacles,scen_rotation, lane_width,target_y,target_speed):
-
-    trajectories,confs,traj_dict = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,init_scene_obstacles)
-    if len(trajectories) < 1:
-        print("no plan found")
-    else:
-        print("change left")
-    return trajectories,confs,traj_dict
-
-
 def main():
     lane_width = 3.5
+    stg.init(lane_width)  
 
     counter_exp = 50
     statistics_arr = np.zeros(counter_exp)
@@ -286,135 +274,6 @@ def main():
     OPM_values = []
     folder = time.strftime("%Y%m%d-%H%M%S")
 
-
-    
-    #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"
-    scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
-    #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"
-
-    ################ collision check ################
-    #extractor.all_functions(scene_path)
-
-
-    ##################################################
-
-    init_x, init_y,init_heading,init_speed,init_scene_obstacles,scen_rotation, lane_width,future_trajectories_obstacles,total_time_steps = extractor.extract_data(scene_path)
-    stg.init(lane_width) 
-    #### debug ############
-    print("ego init x  ,  y  ,   heading   , v  : ")
-    print(init_x, init_y,init_heading,init_speed)
-    
-    for o in init_scene_obstacles:
-        print("obstacle  init x  ,  y  ,   heading   , v  : ")
-        print(o)
-
-        
-    
-    
-    
-
-    
-    
-    delta_time = 0.2
-    standard_delta = 0.1
-    curr_time = 0
-    q0 = [init_x,init_y,init_speed]
-    curr_dl = 0
-    curr_ddl = 0
-    acc0 = 0
-    ####### for statistics ######################
-    stat = Statistics()
-    
-    stat.t.append(curr_time)
-    stat.yaw.append(0.0)
-    stat.s = [q0[0]]
-    stat.v_s = [q0[2]]
-    stat.a_s = [0.0]
-    stat.j_s = [0.0]
-
-    stat.l = [q0[1]]
-    stat.v_l = [curr_dl]
-    stat.a_l = [curr_ddl]
-    stat.j_l = [0.0]   
-
-    stat.other_obs_no = len(init_scene_obstacles) #- 1
-    for i in range(stat.other_obs_no):
-        stat.other_obs_s.append([init_scene_obstacles[i][0][0]])  #2d
-        stat.other_obs_v_s.append([init_scene_obstacles[i][2][0]]) #2d
-        stat.other_obs_l.append([init_scene_obstacles[i][0][1]]) #2d
-
-    #############################################
-    new_obs = init_scene_obstacles
-    final_traj = FrenetPath()
-    ###
-    final_traj.x = [q0[0]]
-    final_traj.s = [q0[0]]
-    final_traj.y = [q0[1]]
-    final_traj.s_d = [q0[2]]
-    final_traj.s_dd = [0]
-    final_traj.yaw = [0]
-    
-    final_traj.s_ddd = [0]
-    final_traj.d_dd = [0]
-    final_traj.d_ddd = [0]
-    target_y = init_y + lane_width
-    target_speed = init_speed + 2
-    for i in range(2,total_time_steps,int(delta_time/standard_delta)):
-
-        trajectories,confs,traj_dict = call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,new_obs,scen_rotation, lane_width,target_y,target_speed)
-        if len(trajectories) < 1:
-            print("SOMETHING IS WRONG")
-        else: 
-            final_traj.x = final_traj.x + [trajectories[0].x[1]]
-            final_traj.y = final_traj.y + [trajectories[0].y[1]]
-            final_traj.s_d = final_traj.s_d + [trajectories[0].s_d[1]]
-            final_traj.s_dd = final_traj.s_dd + [trajectories[0].s_dd[1]]
-            final_traj.yaw = final_traj.yaw + [trajectories[0].yaw[1]]
-
-            # for calculating OPM metric
-            final_traj.s_ddd = final_traj.s_ddd + [trajectories[0].s_ddd[1]]
-            final_traj.d_dd = final_traj.d_dd + [trajectories[0].d_dd[1]]
-            final_traj.d_ddd = final_traj.d_ddd + [trajectories[0].d_ddd[1]]
-            #
-            curr_dl = trajectories[0].d_d[1]
-            curr_ddl = trajectories[0].d_dd[1]
-            acc0 = trajectories[0].s_dd[1]
-            new_obs = []
-            for obs in future_trajectories_obstacles:
-                new_obs.append(((obs[i][0], obs[i][1]), (5.5, 2.5), (obs[i][2], 0)))
-            print("ddsfag",new_obs)
-            
-            q0[0] = final_traj.x[-1]
-            q0[1] = final_traj.y[-1]
-            q0[2] = final_traj.s_d[-1]
-
-            ####### for statistics ######################            
-            stat.t.append(i*standard_delta)
-            stat.yaw.append(final_traj.yaw[-1])
-            
-            stat.s.append(final_traj.x[-1])
-            stat.v_s.append(final_traj.s_d[-1])
-            stat.a_s.append(final_traj.s_dd[-1])
-            stat.j_s.append(final_traj.s_ddd[-1])
-
-            stat.l.append(final_traj.y[-1])
-            stat.v_l.append(curr_dl)
-            stat.a_l.append(curr_ddl)
-            stat.j_l.append(final_traj.d_ddd[-1])
-        
-            for i in range(stat.other_obs_no):
-                stat.other_obs_s[i].append(new_obs[i][0][0])  #2d
-                stat.other_obs_v_s[i].append(new_obs[i][2][0]) #2d
-                stat.other_obs_l[i].append(new_obs[i][0][1]) #2d
-            ###########################################
-
-    OPM_values.append(calc_OPM_metric(final_traj))
-    stat.save_to_file('auto_driving/gifs/lane_change_gifs/single_exp'+folder,0)
-
-
-
-
-    extractor.draw_traj_with_scenario(final_traj,scene_path)
 
     ############ change to left lane problem ###############
 

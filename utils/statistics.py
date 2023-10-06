@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-from metrics.TTC import calc_TTC_traj
+from metrics.TTC import calc_TTC_traj, calc_TTC_traj_lane_change
 import os
 
 class Statistics:
@@ -34,7 +34,10 @@ class Statistics:
         self.TTC = []
     
     def get_TTC(self):
-        self.TTC = calc_TTC_traj(self.s , self.v_s , self.front_obs_s, self.front_obs_v_s)
+        if len(self.front_obs_s) < 1:
+            self.TTC = calc_TTC_traj_lane_change(self.s , self.v_s , self.other_obs_s, self.other_obs_v_s,self.other_obs_no)
+        else:
+            self.TTC = calc_TTC_traj(self.s , self.v_s , self.front_obs_s, self.front_obs_v_s)
 
     def save_to_file(self,path,exp_no):
 
@@ -55,14 +58,16 @@ class Statistics:
         data['acc_l'] = self.a_l
         data['jerk_l'] = self.j_l
 
-        data['front_obs_s'] = self.front_obs_s
-        data['front_obs_vel_s'] = self.front_obs_v_s
-        data['front_obs_l'] = self.front_obs_l
+        if len(self.front_obs_s) > 0 :
+            data['front_obs_s'] = self.front_obs_s
+            data['front_obs_vel_s'] = self.front_obs_v_s
+            data['front_obs_l'] = self.front_obs_l
 
         for i in range(self.other_obs_no):
             data['obs_'+ str(i+1) +'_s'] =  self.other_obs_s[i]
             data['obs_'+ str(i+1) +'_vel_s'] =  self.other_obs_v_s[i]
-            data['obs_'+ str(i+1) +'_a_s'] =  [self.other_obs_a_s[i] ] * length
+            if len(self.other_obs_a_s) > 0 :
+                data['obs_'+ str(i+1) +'_a_s'] =  [self.other_obs_a_s[i] ] * length
             data['obs_'+ str(i+1) +'_l'] =  self.other_obs_l[i]
 
         if (len(self.decisions) < 1):   # lane_change scenario
@@ -74,7 +79,7 @@ class Statistics:
         
         ##### debug #####
         #for key in data.keys() :
-        #    print(key, "len " , len(data[key]))
+            #print(key, "len " , len(data[key]))
 
         df = pd.DataFrame(data=data)
         

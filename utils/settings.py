@@ -1,6 +1,6 @@
 import numpy as np
 
-def init():
+def init(lane_width):
     global ENV_WIDTH
     global LANE_WIDTH
     global MAX_SPEED
@@ -48,7 +48,7 @@ def init():
     #### environment parameters
     ENV_WIDTH = 200 #2 #100  # meters
     #ENV_HEIGHT = ENV_WIDTH / 2
-    LANE_WIDTH = 3.5 #0.1 #3.5 # meters
+    LANE_WIDTH = lane_width#3.5 #0.1 #3.5 # meters
     #wx_middle_lane = [0.0, 10.0, 20.5, 35.0, 70.5, ENV_WIDTH]
     #wy_middle_lower_lane = [ENV_WIDTH/4-LANE_WIDTH/2 , ENV_WIDTH/4-LANE_WIDTH/2 ,ENV_WIDTH/4-LANE_WIDTH/2, ENV_WIDTH/4-LANE_WIDTH/2, ENV_WIDTH/4-LANE_WIDTH/2, ENV_WIDTH/4-LANE_WIDTH/2]
     wx_middle_lane = [0.0, ENV_WIDTH*10]
