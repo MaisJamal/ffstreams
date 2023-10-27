@@ -9,3 +9,4 @@ ffplanner/lex.fct_pddl.c
 ffplanner/lex.ops_pddl.c
 ffplanner/ff
 ffplanner/libff.so
+auto_driving/apollo/problem.pddl

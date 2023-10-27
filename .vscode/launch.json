@@ -27,6 +27,12 @@
             "type": "python",
             "request": "launch",
             "module": "auto_driving.commonroad.run_commonR_scen"
+        },
+        {
+            "name": "Python: Apollo",
+            "type": "python",
+            "request": "launch",
+            "module": "auto_driving.apollo.run_apollo"
         }
     ]
 }
