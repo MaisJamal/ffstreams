@@ -4,9 +4,10 @@ from bottle import run, post, request, response,get
 import math
 import numpy as np
 from ffstreams.ffstreams_algorithm import solve_ffstreams
-from utils.apollo_utils import parse_req_msg,UpdateToEgoOrigin
+from utils.apollo_utils import parse_req_msg,UpdateToEgoOrigin,UpdateToWorldOrigin,InterpolateTraj,CorrectVelocityAcceleration
 import utils.apollo_config as cfg
 
+DEBUG = False
 
 def get_nearst_point(curr_x,curr_y,xs,ys):
   idx_nearst = 0
@@ -57,18 +58,27 @@ def my_process():
             print("No trajectory was found")
     else: 
         traj =trajectories[0]
-        print(traj.t)
-        print(traj.x)
-        print(traj.s)
-        print(traj.d)
-        print(traj.s_d) # longitudinal velocity
-        print(traj.s_dd)    # longitudinal acceleration
+        scene_angle = ego_state.yaw #0#3.14
+        traj = UpdateToWorldOrigin(traj,ego_state,scene_angle)
+        
         t = traj.t
         a = traj.s_dd
         v = traj.s_d
-        x = [ego_state.x - k   for k in traj.s] 
-        y = [ego_state.y + k   for k in traj.d] 
-        heading = [3.128031470]*len(t)
+        x = traj.x #[ego_state.x - k   for k in traj.s] 
+        y = traj.y #[ego_state.y + k   for k in traj.d] 
+        print("yaw traj ",traj.yaw)
+        traj = InterpolateTraj(traj)
+        traj = CorrectVelocityAcceleration(ego_state,traj)
+        heading = [scene_angle]*len(t)
+        if DEBUG:
+          print(traj.t)
+          print("x ", traj.x)
+          print("y ", traj.y)
+          print(traj.s)
+          print(traj.d)
+          print(traj.s_d) # longitudinal velocity
+          print(traj.s_dd)    # longitudinal acceleration
+          print("yaw ",heading)
     ############ Trajectory example ##################
     curr_v = ego_state.v
     curr_x = ego_state.x

@@ -53,14 +53,14 @@ def solve_ffstreams(ego_state,obstacles):
         traj_array[0][conf_num] = True
         traj_type[(0,conf_num)] = "YIELD"
         conf_num +=1
-    #plot_candidate_trajectories(follow_output,yield_output,q0,obstacles)
+    plot_candidate_trajectories(follow_output,yield_output,q0,obstacles)
 
-
+    """ # debug
     print("Connectivity array between configurations:")
     print(traj_array)
     for i in range(len(confs)):
         print("q",i,":",confs[i])
-    
+    """
     there_is_front_obs = False
     translate_to_pddl_apollo(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,cfg.FILE_PATH,cfg.PROBLEM_FILE)
     planner_path = os.getcwd() + "/ffplanner/ff"
@@ -96,7 +96,7 @@ def plot_candidate_trajectories(follow_output,yield_output,q0,obstacles):
         plt.plot(cfg.txBound2, cfg.tyBound2,"c")
         plt.plot(cfg.txBound3, cfg.tyBound3,"c")
         for obs in obstacles:  #plot obstacles
-            rect = get_rect((obs.x,obs.y),obs.shape) # in the form [(left,bottom),x_extend,y_extend]
+            rect = get_rect((obs.s,obs.l),obs.shape) # in the form [(left,bottom),x_extend,y_extend]
             rect_patch=mpatches.Rectangle(rect[0], rect[1], rect[2])#((31,15),14,7, fill = False,color = "purple",linewidth = 2)
             plt.gca().add_patch(rect_patch)
         if follow_output is not None:

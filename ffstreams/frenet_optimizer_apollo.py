@@ -150,7 +150,7 @@ def calc_global_paths(fplist, csp):
             #ix, iy = csp.calc_position(fp.s[i])
             if ix is None:
                 break
-            i_yaw = 0 #csp.calc_yaw(fp.s[i])
+            i_yaw = math.pi / 2.0 #csp.calc_yaw(fp.s[i])
             di = fp.d[i]
             fx = ix + di * math.cos(i_yaw + math.pi / 2.0)
             fy = iy + di * math.sin(i_yaw + math.pi / 2.0)

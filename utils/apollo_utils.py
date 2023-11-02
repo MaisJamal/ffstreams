@@ -1,5 +1,6 @@
+import numpy as np
 
-
+import math
 
 class EgoState:
     def __init__(self):
@@ -46,7 +47,7 @@ def parse_req_msg(request_msg):
     ego_state.yaw = request_msg["vehicle_state"]["heading"]
     ego_state.v = request_msg["vehicle_state"]["linear_velocity"]
     ego_state.a = request_msg["vehicle_state"]["linear_acceleration"]
-    
+    print("received x, y, yaw: ",ego_state.x,ego_state.y, ego_state.yaw)
     num_obstacles = request_msg["vehicle_state"]["obstacles_num"]
     obstacles = request_msg["obstacles"]
     
@@ -70,8 +71,12 @@ def parse_req_msg(request_msg):
         obstacles_state.append(NewObs)
 
     if len(obstacles_state) < 1 :
-        print("No obstacles")
-
+        print("No obstacles, adding a virtual one...")
+        temp_obs = ObstacleState()
+        temp_obs.v = ego_state.v + 10
+        temp_obs.s = 110 + ego_state.s
+        temp_obs.l = 0
+        obstacles_state.append(temp_obs)
     return ego_state, obstacles_state, curr_time,lane_width
 
 
@@ -85,6 +90,16 @@ def UpdateToEgoOrigin(ego_state, obstacles):
     ego_state.s = 0
     return ego_state,obstacles
     
+
+def UpdateToWorldOrigin(traj,ego_state,angle):
+    NewOrigin = (ego_state.x,ego_state.y)
+    fix_start_l = traj.d[0]
+    for i in range(len(traj.s)):
+        traj.x[i] = traj.s[i] + NewOrigin[0]
+        traj.y[i] = traj.d[i] + NewOrigin[1] - fix_start_l
+        traj.x[i],traj.y[i] = rotate(NewOrigin,(traj.x[i],traj.y[i]),angle)
+          
+    return traj
 
 
 def  extract_front_obstacle(obstacles,q_ego):
@@ -104,3 +119,88 @@ def  extract_front_obstacle(obstacles,q_ego):
                         front_obs_idx = i
         i=i+1
     return front_obs_idx
+
+def rotate(origin, point, angle):
+    """
+    Rotate a point counterclockwise by a given angle around a given origin.
+
+    The angle should be given in radians.
+    """
+    ox, oy = origin
+    px, py = point
+
+    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+    qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+    return qx, qy
+
+def InterpolateTraj(traj):
+    # t = [0.0, 0.2, 0.4, 0.6000000000000001, 0.8, 1.0,
+    #  1.2000000000000002, 1.4000000000000001, 1.6, 1.8, 2.0,
+    #  2.2, 2.4000000000000004, 2.6, 2.8000000000000003, 3.0,
+    #  3.2, 3.4000000000000004, 3.6, 3.8000000000000003, 4.0,
+    #  4.2, 4.4, 4.6000000000000005, 4.800000000000001]
+    print("before " ,len(traj.t))
+    t_ref = traj.t
+    x_ref = traj.x
+    y_ref = traj.y
+    v_ref = traj.s_d
+    a_ref = traj.s_dd
+    new_x = []
+    new_t = []
+    new_y = []
+    new_v = []
+    new_a = []
+    for i in range(len(t_ref)):
+        new_x.append(x_ref[i])
+        new_t.append(t_ref[i])
+        new_y.append(y_ref[i])
+        new_v.append(v_ref[i])
+        new_a.append(a_ref[i])
+
+        new_x.append(np.interp(t_ref[i] + 0.05 ,t_ref,x_ref) )
+        new_y.append(np.interp(t_ref[i] + 0.05 ,t_ref,y_ref) )
+        new_v.append(np.interp(t_ref[i] + 0.05 ,t_ref,v_ref) )
+        new_a.append(np.interp(t_ref[i] + 0.05 ,t_ref,a_ref) )
+        new_t.append(t_ref[i]+ 0.05)
+        
+        new_x.append(np.interp(t_ref[i] + 0.1 ,t_ref,x_ref) )
+        new_y.append(np.interp(t_ref[i] + 0.1 ,t_ref,y_ref) )
+        new_v.append(np.interp(t_ref[i] + 0.1 ,t_ref,v_ref) )
+        new_a.append(np.interp(t_ref[i] + 0.1 ,t_ref,a_ref) )
+        new_t.append(t_ref[i] + 0.1)
+        
+        new_x.append(np.interp(t_ref[i] + 0.15 ,t_ref,x_ref) )
+        new_y.append(np.interp(t_ref[i] + 0.15 ,t_ref,y_ref) )
+        new_v.append(np.interp(t_ref[i] + 0.15 ,t_ref,v_ref) )
+        new_a.append(np.interp(t_ref[i] + 0.15 ,t_ref,a_ref) )
+        new_t.append(t_ref[i] + 0.15)
+
+    traj.t = new_t
+    traj.x = new_x
+    traj.y = new_y
+    traj.s_d = new_v
+    traj.s_dd = new_a
+    print("after " ,len(traj.t))
+
+    return traj
+
+
+def CorrectVelocityAcceleration(ego_state,traj):
+    # correct v and a 
+    # traj.s_d == v
+    # traj.s_dd == a
+    new_v = [ego_state.v]
+    new_a = [ego_state.a]
+    for i in range(1,len(traj.t)):
+        delta_x = traj.x[i] - traj.x[i-1]
+        delta_y = traj.y[i] - traj.y[i-1]
+        delta_t = traj.t[i]-traj.t[i-1]
+        dist = math.sqrt(delta_x*delta_x + delta_y*delta_y)
+        v = dist / delta_t
+        new_v.append(v)
+        a = (new_v[i]-new_v[i-1] ) / delta_t
+        new_a.append(a)
+    traj.s_d = new_v
+    traj.s_dd = new_a
+
+    return traj
