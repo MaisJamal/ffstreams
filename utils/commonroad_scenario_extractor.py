@@ -64,11 +64,21 @@ def GetRotationAndLaneWidth(scenario):
     delta_x = scenario.lanelet_network.lanelets[0].left_vertices[-1][0] - scenario.lanelet_network.lanelets[0].left_vertices[0][0]
     delta_y = scenario.lanelet_network.lanelets[0].left_vertices[-1][1] - scenario.lanelet_network.lanelets[0].left_vertices[0][1]
     theta_rad = math.atan(delta_y/delta_x)
-    theta = math.degrees(theta_rad)
+    if delta_x>0 and delta_y >0:
+        theta_rad += + 3.14
+    theta = math.degrees(theta_rad) 
     # get lane width
+    center_vertices = scenario.lanelet_network.lanelets[0].center_vertices
+    print(center_vertices[0])
+    print(center_vertices[-1])
+    print(len(center_vertices))
+    print(len(scenario.lanelet_network.lanelets))
+    print(scenario.lanelet_network.lanelets[0].left_vertices[0][1])
+    print(scenario.lanelet_network.lanelets[0].right_vertices[0][1])
     print("raw width ",(scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1]))
     lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
-
+    if lane_width < 2 :
+        lane_width = 3.5
     return theta,lane_width
 
 
@@ -101,38 +111,66 @@ def extract_data(file_path):
     
     SCENARIO_ROTATION_DEGREES = theta
 
+
     print("theta in degrees is ", theta)
     print("lane width is ", lane_width)
-    
+    angle = -1*math.radians(SCENARIO_ROTATION_DEGREES)
     # get dynamic obstacles in the scenario
     total_time_steps = scenario.dynamic_obstacles[0].prediction.final_time_step
     print("total_time_steps: ",total_time_steps)
     future_trajectories_obstacles = []
     init_obstacles = []
     for dyn_obst in scenario.dynamic_obstacles:
-        
+        print("dyn",dyn_obst)
+        #print(dyn_obst.obstacle_shape)
         obs_pos = dyn_obst.initial_state.position
-        obs_pos[1] = obs_pos[1] + SHIFT_IN_FFSTREAM_Y
+        obs_pos[0],obs_pos[1] = rotate((INIT_STATE.position[0],INIT_STATE.position[1]),(obs_pos[0],obs_pos[1]),angle)
+        obs_pos[0] = obs_pos[0] - INIT_STATE.position[0]
+        if dyn_obst.obstacle_type == ObstacleType.TRUCK:
+            obs_pos[0] -= (dyn_obst.obstacle_shape.length - 5.5)
+        obs_pos[1] = obs_pos[1] + SHIFT_IN_FFSTREAM_Y -INIT_STATE.position[1]
         obs_orien = dyn_obst.initial_state.orientation - theta
         obs_vel = dyn_obst.initial_state.velocity
         #obs_acc = dyn_obst.initial_state.acceleration
         #obstacles.append((obs_pos[0],obs_pos[1],obs_orien,obs_vel))
         init_obstacles.append(((obs_pos[0], obs_pos[1]), (5.5, 2.5), (obs_vel, 0)))
         traj = []
-        for i in range(total_time_steps):
+        for i in range(1,total_time_steps):
+            if dyn_obst.state_at_time(i) == None:
+                total_time_steps = i
+                break
             p_x = dyn_obst.state_at_time(i).position[0]
-            p_y = dyn_obst.state_at_time(i).position[1] + SHIFT_IN_FFSTREAM_Y
-            angle = -1*math.radians(SCENARIO_ROTATION_DEGREES)
-            p_x , p_y = rotate((0,0),(p_x,p_y),angle)
+            p_y = dyn_obst.state_at_time(i).position[1] 
+            
+            p_x , p_y = rotate((INIT_STATE.position[0],INIT_STATE.position[1]),(p_x,p_y),angle)
+           
+            p_x = p_x - INIT_STATE.position[0]
+            #if dyn_obst.obstacle_type == ObstacleType.TRUCK:
+            #    p_x -= (dyn_obst.obstacle_shape.length - 5.5)
+            p_y = p_y + SHIFT_IN_FFSTREAM_Y -INIT_STATE.position[1]
+            
             p_v = dyn_obst.state_at_time(i).velocity
+            print("x y v ",dyn_obst.state_at_time(i).position[0],dyn_obst.state_at_time(i).position[1],dyn_obst.state_at_time(i).velocity)
             traj.append((p_x,p_y,p_v))
+        # fix error in obs velocity
+        """
+        for i in range(len(traj)):
+            if traj[i][2] == 0 and i > 0:
+                as_list = list(traj[i])
+                delta_vx = (traj[i][0]-traj[i-1][0])/0.1
+                delta_vy = (traj[i][1]-traj[i-1][1])/0.1
+                as_list[2] = math.sqrt(delta_vx*delta_vx + delta_vy*delta_vy)
+                as_tuple = tuple(as_list)
+                traj[i] = as_tuple
+        """
         future_trajectories_obstacles.append(traj)
         
     #print(future_trajectories_obstacles) ##  [[ (obs1_x1,obs1_y1,obs1_v1),(obs1_x2,obs1_y2,obs1_v2), ... ],[(obs2_x1,obs2_y1,obs2_v1),(obs2_x2,obs2_y2,obs2_v2) , ...]]
     #####################################
     ego_orientation_ff = INIT_STATE.orientation - theta
-    ego_y_ff = INIT_STATE.position[1] + SHIFT_IN_FFSTREAM_Y
-
+    ego_x_ff = 0 #INIT_STATE.position[0]
+    ego_y_ff = SHIFT_IN_FFSTREAM_Y#INIT_STATE.position[1] + SHIFT_IN_FFSTREAM_Y
+    
     # plot the planning problem and the scenario for the fifth time step
     plt.figure(figsize=(25, 10))
     rnd = MPRenderer()
@@ -141,7 +179,7 @@ def extract_data(file_path):
     rnd.render()
     plt.show()
 
-    return INIT_STATE.position[0],ego_y_ff,ego_orientation_ff,INIT_STATE.velocity , init_obstacles , theta, lane_width, future_trajectories_obstacles,total_time_steps
+    return ego_x_ff,ego_y_ff,ego_orientation_ff,INIT_STATE.velocity , init_obstacles , theta, lane_width, future_trajectories_obstacles,total_time_steps
 
 def draw_traj_with_scenario(trajectory,file_path):
 
@@ -164,14 +202,14 @@ def draw_traj_with_scenario(trajectory,file_path):
         # compute new position
         # add new state to state_list
         some_state=copy.deepcopy(initial_state)
-        p_x = trajectory.x[int(i/2)]
-        p_y = trajectory.y[int(i/2)] - SHIFT_IN_FFSTREAM_Y 
+        p_x = trajectory.x[int(i/2)]+ initial_state.position[0]
+        p_y = trajectory.y[int(i/2)] + initial_state.position[1]- SHIFT_IN_FFSTREAM_Y
         angle = math.radians(SCENARIO_ROTATION_DEGREES)
-        p_x , p_y = rotate((0,0),(p_x,p_y),angle)
+        p_x , p_y = rotate((initial_state.position[0],initial_state.position[1]),(p_x,p_y),angle)
         p_yaw = trajectory.yaw[int(i/2)]
-        some_state.position[0] = p_x
-        some_state.position[1] = p_y
-        some_state.orientation = p_yaw   # should it be in degrees??!! #TOCHECK
+        some_state.position[0] = p_x 
+        some_state.position[1] = p_y  
+        some_state.orientation = p_yaw + angle # should it be in degrees??!! #TOCHECK
         some_state.time_step = i
         state_list.append(some_state)
         i+=2
@@ -340,3 +378,18 @@ def all_functions(file_path):
 
 
 
+def  extract_front_obstacle(obstacles,q_ego):
+    ### obstacles is a list of tuples (x pos, y pos, linear velocity)
+    ### q_ego is the configuration of the ego vehicle , a tuple (x pos, y pos, linear velocity)
+    front_obs_idx = 0
+    found_front_obs = False
+    for i in range(len(obstacles)):
+        if abs(obstacles[i][0][1] - q_ego[1]) < 1 :  # compare Y position
+            if obstacles[i][0][0] > q_ego[0] :        # compare X position
+                if not found_front_obs:
+                    found_front_obs = True
+                    front_obs_idx = i
+                else:
+                    if obstacles[i][0][0] < obstacles[front_obs_idx][0][0]: # found a closed front obstacle
+                        front_obs_idx = i
+    return front_obs_idx

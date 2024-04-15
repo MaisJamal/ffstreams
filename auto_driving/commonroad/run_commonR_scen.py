@@ -18,13 +18,14 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import random
-from ffstreams.frenet_optimizer import FrenetPath
+from ffstreams.frenet_optimizer_cr import FrenetPath
 from auto_driving.commonroad.keep_lane_streams import get_yield,get_traj_change_gen, get_follow_speed,get_change_to_left,get_change_to_right,get_follow_speed_overtake
 import utils.settings as stg
 import time
 from utils.translator import translate_to_pddl_cr
 from utils.statistics import Statistics
 import utils.commonroad_scenario_extractor as extractor
+from utils.commonroad_scenario_extractor import extract_front_obstacle
 import copy
 
 ARRAY = np.array
@@ -200,13 +201,13 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or
             os.remove(filename)       
 
 
-def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obstacles):
+def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstacles):
     global overtake_decision
     global overtake_counter 
     global overtake_traj 
+    goal_left = False    # very important to distinguish keep lane scenarios from change to left
     file_path = "auto_driving/commonroad/"
     problem_file = "problem.pddl"
-    rand_x_goal = 20
     confs = []
     conf_num = 1
     traj_dict = {} # for connectivity graph
@@ -216,7 +217,9 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
 
     trajectories = []
     # call available applicable streams
-    target_speed =min(33.33,target_speed,q0[2]+8)
+    const_dv = 2.5
+    target_speed =min(speed_limit,q0[2]+const_dv)
+    print(" follow target speed : ",target_speed)
     follow_output = next(get_follow_speed(q0,acc0,curr_dl,curr_ddl,target_speed))
     if follow_output is not None:
         q = ARRAY([follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].s_d[-1]])
@@ -225,8 +228,8 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         traj_array[0][conf_num] = True
         traj_type[(0,conf_num)] = "FOLLOW"
         conf_num +=1
-        
-    yield_output = next(get_yield(q0,acc0,curr_dl,curr_ddl,obstacles[0])) #TODO add condition of existing front obstacle
+    front_obs_idx = extract_front_obstacle(obstacles,q0)    
+    yield_output = next(get_yield(q0,acc0,curr_dl,curr_ddl,obstacles[front_obs_idx])) #TODO add condition of existing front obstacle
     if yield_output is not None:
         q = ARRAY([yield_output[0].x[-1],yield_output[0].y[-1],yield_output[0].s_d[-1]])
         confs.append(q)
@@ -235,15 +238,16 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         traj_type[(0,conf_num)] = "YIELD"
         conf_num +=1
     ## change lane to left
-    
-    change_left_output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed)) 
-    if change_left_output is not None:
-        q = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
-        confs.append(q)
-        traj_dict[(0,conf_num)] = change_left_output[0]
-        traj_array[0][conf_num] = True
-        traj_type[(0,conf_num)] = "CHANGE_LEFT"
-        conf_num +=1
+    change_left_output = None
+    if goal_left:
+        change_left_output = next(get_change_to_left(q0,acc0,curr_dl,curr_ddl,target_speed)) 
+        if change_left_output is not None:
+            q = ARRAY([change_left_output[0].x[-1],change_left_output[0].y[-1],change_left_output[0].s_d[-1]])
+            confs.append(q)
+            traj_dict[(0,conf_num)] = change_left_output[0]
+            traj_array[0][conf_num] = True
+            traj_type[(0,conf_num)] = "CHANGE_LEFT"
+            conf_num +=1
     
     # overtaking   
     low_acc = False
@@ -570,7 +574,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
         if overtake_decision:
             plt.plot(overtake_traj.x[0:], overtake_traj.y[0:], "-b")
             plt.plot(overtake_traj.x[0],overtake_traj.y[0], "vc")
-        plt.xlim(0, 800)
+        plt.xlim(0, 100)
         area = 50
         #plt.ylim(lane_change_output[0].y[1] - area, lane_change_output[0].y[1] + area)
         #plt.title("v[m/s]:" + str(lane_change_output[0].s_d[1] )[0:4] + "a[m/s2]:" + str(lane_change_output[0].s_dd[1] )[0:4])
@@ -587,7 +591,8 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
 
    
     start = time.time()
-    translate_to_pddl_cr(there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file)
+    
+    translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file)
     print("time of printing: ",time.time() - start)
 
     start = time.time() 
@@ -626,14 +631,14 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 
     return obstacles_new
 
-def call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,init_scene_obstacles,scen_rotation, lane_width,target_y,target_speed):
+def call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,init_scene_obstacles,scen_rotation, lane_width,target_y,speed_limit):
 
-    trajectories,confs,traj_dict,final_traj_type = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,init_scene_obstacles)
+    trajectories,confs,traj_dict,final_traj_type = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,init_scene_obstacles)
     if len(trajectories) < 1:
         print("no plan found")
     else:
         print("change left")
-    return trajectories,confs,traj_dict
+    return trajectories,confs,traj_dict,final_traj_type
 
 
 
@@ -651,10 +656,12 @@ def main():
     folder = time.strftime("%Y%m%d-%H%M%S")
 
     
-    #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"
+    #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"#NO
     scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
-    #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"
-
+    #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"  #NO
+   # scene_path = "scenarios/commonroad/keep_lane_scenarios/ESP_Monzon-2_1_T-1.xml"  # 2nd scenario, maybe is working
+    #scene_path = "scenarios/commonroad/keep_lane_scenarios/ITA_Empoli-18_1_T-1.xml"
+    
     ################ collision check ################
     #extractor.all_functions(scene_path)
 
@@ -671,12 +678,6 @@ def main():
         print("obstacle  init x  ,  y  ,   heading   , v  : ")
         print(o)
 
-        
-    
-    
-    
-
-    
     
     delta_time = 0.2
     standard_delta = 0.1
@@ -721,10 +722,10 @@ def main():
     final_traj.d_dd = [0]
     final_traj.d_ddd = [0]
     target_y = init_y + lane_width
-    target_speed = init_speed + 2
+    max_speed = 16.2 # 60 km/h
     for i in range(2,total_time_steps,int(delta_time/standard_delta)):
-
-        trajectories,confs,traj_dict = call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,new_obs,scen_rotation, lane_width,target_y,target_speed)
+        print ("i ",i)
+        trajectories,confs,traj_dict,final_traj_type = call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,new_obs,scen_rotation, lane_width,target_y,max_speed)
         if len(trajectories) < 1:
             print("SOMETHING IS WRONG")
         else: 
@@ -764,7 +765,7 @@ def main():
             stat.v_l.append(curr_dl)
             stat.a_l.append(curr_ddl)
             stat.j_l.append(final_traj.d_ddd[-1])
-        
+            stat.decisions.append(final_traj_type)
             for i in range(stat.other_obs_no):
                 stat.other_obs_s[i].append(new_obs[i][0][0])  #2d
                 stat.other_obs_v_s[i].append(new_obs[i][2][0]) #2d
@@ -925,7 +926,7 @@ def main():
                         plt.gca().add_patch(rect_patch)
                     plt.plot(yield_traj[0].x[1:], yield_traj[0].y[1:], "-r")
                     plt.plot(yield_traj[0].x[1],yield_traj[0].y[1], "vc")
-                    plt.xlim(0, 800)
+                    plt.xlim(0, 100)
                     area = 50
                     plt.ylim(yield_traj[0].y[1] - area, yield_traj[0].y[1] + area)
                     plt.title("v[m/s]:" + str(yield_traj[0].s_d[1] )[0:4] + "a[m/s2]:" + str(yield_traj[0].s_dd[1] )[0:4])

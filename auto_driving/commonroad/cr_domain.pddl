@@ -43,7 +43,7 @@
                     (= (at_y ?after_first)(obst_at_y ?o)) 
                     (>= (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time) )) ) )
                     (>= (- (at_x ?after_first) (+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )   ) 6.5)
-                )
+                ) ; (+(+ (obst_at_x ?o) (* (obst_at_speed ?o) (+ (at_time ?after_first) (curr_time))) )( *(*(obst_at_acc ?o) 0.5) (*(+ (at_time ?after_first) (curr_time))(+ (at_time ?after_first) (curr_time))) ))
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
                 (is_first ?after_first ?o)
