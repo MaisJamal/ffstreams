@@ -526,7 +526,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     #ss2 = time.time()
     #print("time for get_traj_change_gen", ss2-ss1)
     """
-    show_output = False # important2
+    show_output = False #True # important2
     if show_output:
         dt = 0.2
         plt.cla()
@@ -623,9 +623,10 @@ def main():
     stg.init(lane_width)  
     global overtake_decision
     global overtake_counter
-    counter_exp = 50
+    counter_exp = 100
     statistics_arr = np.zeros(counter_exp)
     overtake_or_yield = np.zeros(counter_exp) # 1 for overtake, 2 for yield then overtake
+    has_no_decision = 0
     count_success = 0
     OPM_values = []
     folder = time.strftime("%Y%m%d-%H%M%S")
@@ -644,12 +645,17 @@ def main():
         all_y=[stg.wy_middle_lower_lane[0],stg.wy_middle_upper_lane[0],stg.wy_middle_lower_lower_lane[0]]
         q0 = ARRAY([0,all_y[0], INIT_SPEED])
         target_y = all_y[1]
-        target_speed = 12  
+         
 
         obsfront_x = 50#random.uniform(50.0,100.0)#90  #random.uniform(50.0,65.0)#90
-        obsfront_v = 7.5#25.5#random.uniform(20.0,26.0)#26.0#random.uniform(26.0,32.0)#26.0
+        # if exp == 7 or exp == 22 or exp ==39 or exp == 63 or exp == 81 or exp == 94 : ### for paper materials 
+        #     obsfront_v = 8.4
+        # else:
+        #     obsfront_v = 7.5 #random.uniform(6.5,8.5)#7.5 working #25.5#random.uniform(20.0,26.0)#26.0#random.uniform(26.0,32.0)#26.0
+        obsfront_v = 7.5 
         obsfront_a = 0.0
-
+        target_speed = obsfront_v + 4.5#random.uniform(4.5)##12 working
+        
         obs2_x = random.uniform(-85.0,85.0)
         obs2_v = random.uniform(26.0,32.0)
         obs2_a = random.uniform(-3.0,3.0)
@@ -737,10 +743,11 @@ def main():
         final_traj.d_ddd = [0]
         #####
         reached_end = False
+        no_plan_found = False
         total_excution_time = 0
         cycle_count = 0
         
-        while curr_time <50.0 and not reached_end:
+        while curr_time <50.0 and not reached_end and not no_plan_found:
             start_time = time.time()
             print("current t: ", curr_time)
             confs = []
@@ -753,6 +760,7 @@ def main():
             print("time of func solve_pddl_lane_change is ", s2 - s1)
             if len(trajectories) < 1:
                 print("no plan found")
+                no_plan_found = True
                 virtual_obs= ((new_obs[0][0][0],(new_obs[0][0][1])),(5.5,2.5),(q0[2],0))
                 yield_traj = next(get_yield(q0,acc0,curr_dl,curr_ddl,virtual_obs))#new_obs[0]
                 s3 = time.time()
@@ -887,18 +895,37 @@ def main():
                         else:
                             overtake_or_yield[exp] = 2 # yield then overtake
                         break
+                
 
 
         #print(len(final_traj.s_dd),len(final_traj.d_dd),len(final_traj.s_ddd),len(final_traj.s_ddd))    
         OPM_values.append(calc_OPM_metric(final_traj))
-        stat.save_to_file('auto_driving/gifs/keep_lane_gifs/single_exp'+folder,exp)
+        ## check for no plan / no solution situations
+        failed = False
+        for decis in stat.decisions :
+            if decis == 'NONE' :
+                failed = True
+                has_no_decision += 1
+                break
+        stat.save_to_file('auto_driving/gifs/keep_lane_gifs/single_exp'+folder,exp,failed=failed)
+
         plot_traj(final_traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or_yield)# trajectories[0]
     param_file = 'auto_driving/gifs/keep_lane_gifs/single_exp'+folder+'/statistics.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
 
     f = open(param_file, "w")
-    f.write("Successful experiments: %s\n" % count_success )
     f.write("Total experiments: %s\n" % counter_exp )
+    f.write("Successful experiments: %s\n" % count_success )
+    f.write("No plan found experiments: %s\n" % has_no_decision )
+    overtake_direct = 0
+    overtake_not_direct = 0
+    for k in range(counter_exp):
+        if overtake_or_yield[k]==1 :
+            overtake_direct+=1
+        elif overtake_or_yield[k]==2 :
+            overtake_not_direct+=1
+    f.write("overtake immediately experiments: %s\n" % overtake_direct )
+    f.write("yield until obstacle passes then overtake experiments: %s\n" % overtake_not_direct )
     f.write("overtake(1) or yield then overtake(2): %s\n" % overtake_or_yield)
     f.write("Average runtime: %s\n" % statistics_arr)
     f.write("OPM metric: %s\n" % OPM_values)

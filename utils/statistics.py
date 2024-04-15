@@ -39,7 +39,7 @@ class Statistics:
         else:
             self.TTC = calc_TTC_traj(self.s , self.v_s , self.front_obs_s, self.front_obs_v_s)
 
-    def save_to_file(self,path,exp_no):
+    def save_to_file(self,path,exp_no,failed = False):
 
         self.get_TTC()
 
@@ -84,7 +84,10 @@ class Statistics:
         df = pd.DataFrame(data=data)
         
         # save to a file
-        file_path = path+'/data_'+str(exp_no)+'.csv'
+        if failed :
+            file_path = path+'/data_'+str(exp_no)+'_failed.csv'
+        else:
+            file_path = path+'/data_'+str(exp_no)+'.csv'
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         df.to_csv(file_path, index=False)
 

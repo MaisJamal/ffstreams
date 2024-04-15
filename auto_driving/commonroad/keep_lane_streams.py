@@ -2,7 +2,7 @@ from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
 import utils.settings as stg
-from ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
+from ffstreams.frenet_optimizer_cr import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
 import random
 from random import choices
 from numpy.linalg import norm
@@ -22,14 +22,16 @@ def get_yield(q1,acc0,curr_dl,curr_ddl,front_obstacle): # stream for generating 
         b_speed = front_obstacle[2][0] 
         dec_y = stg.wy_middle_lower_lane[0]
         dec_x = b_x - 3 * q1[2]  # q1---------*dec------*obs--q2  # delta_x = delta_t(3s) * v_q1
+        
         dec_v = q1[2]
         #b_speed = max(b_speed,q1[2]-2)
-        low_acc = False
-        if low_acc:
-            thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,b_speed)
+        if b_speed > q1[2] :
+            v = q1[2] 
         else:
-            v = max(q1[2]-8,b_speed)
-            thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_x,dec_y,v)
+            v = max(q1[2]-2.5,b_speed)
+        v = max(v,0.00)
+        print("end v for yield ", v, "  , initial speed ",q1[2]," , front obs speed : ",b_speed)
+        thereIsTraj,traj = get_traj_yield(q1[0],q1[1],q1[2],acc0,curr_dl,curr_ddl,dec_y,v)
         
         if(thereIsTraj):
             yield (traj, )
