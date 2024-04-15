@@ -51,8 +51,8 @@ def my_process():
     
     #init_x, init_y,init_heading,init_speed,init_scene_obstacles, lane_width
     cfg.init(lane_width,speed_limit,max_acc,file_path,problem_file) 
-
-    trajectories,confs,traj_dict,final_traj_type = solve_ffstreams(ego_state=ego_state,obstacles=obstacles)
+    trajectories = []
+    #trajectories,confs,traj_dict,final_traj_type = solve_ffstreams(ego_state=ego_state,obstacles=obstacles)
 
     if len(trajectories) < 1:
             print("No trajectory was found")
@@ -68,7 +68,7 @@ def my_process():
         y = traj.y #[ego_state.y + k   for k in traj.d] 
         print("yaw traj ",traj.yaw)
         traj = InterpolateTraj(traj)
-        traj = CorrectVelocityAcceleration(ego_state,traj)
+        #traj = CorrectVelocityAcceleration(ego_state,traj)
         heading = [scene_angle]*len(t)
         if DEBUG:
           print(traj.t)
@@ -80,19 +80,24 @@ def my_process():
           print(traj.s_dd)    # longitudinal acceleration
           print("yaw ",heading)
     ############ Trajectory example ##################
+    
     curr_v = ego_state.v
     curr_x = ego_state.x
     curr_y = ego_state.y
-    """
-    t = np.arange(0.1, 7.2, 0.1) # start, end , step
-    t = t.tolist()
+    
+    t1 = np.arange(0.1, 1.1, 0.02) # start, end , step
+    t1 = t1.tolist()
+    t2 = np.arange(1.1, 7.1, 0.1) # start, end , step
+    t2 = t2.tolist()
+    t = t1 + t2
+
+    heading = [0]*len(t)
     a = [0.3]* len(t)
     v = [(curr_v + a[0]* ti) for ti in t]
-    x = [(curr_x - curr_v* ti - a[0]*ti*ti) for ti in t]
+    x = [(curr_x + math.cos(heading[0])* curr_v* ti + math.cos(heading[0])* a[0]*ti*ti) for ti in t]
     y = [curr_y]* len(t)
-    heading = [3.128031470]*len(t)
-    """
-    print("first point: x ", x[0]," y ",y[0]," t ",t[0]," v ", v[0]," a ",a[0])
+    
+    print("first point: x ", x[0]," y ",y[0]," t ",t[0]," v ", v[0]," a ",a[0],"len of traj : ",len(x))
 
     trajectory_info = {}
     trajectory_info["x"] = x

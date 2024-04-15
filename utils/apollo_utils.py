@@ -97,7 +97,7 @@ def UpdateToWorldOrigin(traj,ego_state,angle):
     for i in range(len(traj.s)):
         traj.x[i] = traj.s[i] + NewOrigin[0]
         traj.y[i] = traj.d[i] + NewOrigin[1] - fix_start_l
-        traj.x[i],traj.y[i] = rotate(NewOrigin,(traj.x[i],traj.y[i]),angle)
+        #traj.x[i],traj.y[i] = rotate(NewOrigin,(traj.x[i],traj.y[i]),angle)
           
     return traj
 
@@ -145,35 +145,26 @@ def InterpolateTraj(traj):
     y_ref = traj.y
     v_ref = traj.s_d
     a_ref = traj.s_dd
-    new_x = []
+    
     new_t = []
+    new_x = []  
     new_y = []
     new_v = []
     new_a = []
-    for i in range(len(t_ref)):
-        new_x.append(x_ref[i])
-        new_t.append(t_ref[i])
-        new_y.append(y_ref[i])
-        new_v.append(v_ref[i])
-        new_a.append(a_ref[i])
 
-        new_x.append(np.interp(t_ref[i] + 0.05 ,t_ref,x_ref) )
-        new_y.append(np.interp(t_ref[i] + 0.05 ,t_ref,y_ref) )
-        new_v.append(np.interp(t_ref[i] + 0.05 ,t_ref,v_ref) )
-        new_a.append(np.interp(t_ref[i] + 0.05 ,t_ref,a_ref) )
-        new_t.append(t_ref[i]+ 0.05)
-        
-        new_x.append(np.interp(t_ref[i] + 0.1 ,t_ref,x_ref) )
-        new_y.append(np.interp(t_ref[i] + 0.1 ,t_ref,y_ref) )
-        new_v.append(np.interp(t_ref[i] + 0.1 ,t_ref,v_ref) )
-        new_a.append(np.interp(t_ref[i] + 0.1 ,t_ref,a_ref) )
-        new_t.append(t_ref[i] + 0.1)
-        
-        new_x.append(np.interp(t_ref[i] + 0.15 ,t_ref,x_ref) )
-        new_y.append(np.interp(t_ref[i] + 0.15 ,t_ref,y_ref) )
-        new_v.append(np.interp(t_ref[i] + 0.15 ,t_ref,v_ref) )
-        new_a.append(np.interp(t_ref[i] + 0.15 ,t_ref,a_ref) )
-        new_t.append(t_ref[i] + 0.15)
+    for ti in np.arange(0.1, 1.1, 0.02):
+        new_t.append(ti)
+        new_x.append(np.interp(ti ,t_ref,x_ref)) 
+        new_y.append(np.interp(ti ,t_ref,y_ref))
+        new_v.append(np.interp(ti ,t_ref,v_ref))
+        new_a.append(np.interp(ti ,t_ref,a_ref))
+
+    for ti in np.arange(1.1, 7.2, 0.1):
+        new_t.append(ti)
+        new_x.append(np.interp(ti ,t_ref,x_ref)) 
+        new_y.append(np.interp(ti ,t_ref,y_ref))
+        new_v.append(np.interp(ti ,t_ref,v_ref))
+        new_a.append(np.interp(ti ,t_ref,a_ref))
 
     traj.t = new_t
     traj.x = new_x
@@ -204,3 +195,39 @@ def CorrectVelocityAcceleration(ego_state,traj):
     traj.s_dd = new_a
 
     return traj
+
+
+"""
+#####
+ ### validate trajectory ###
+    vx = []
+    vs = []
+    vy = []
+    vl = []
+    v_total = []
+    heading_rad = []
+
+    for i in range(len(traj.x) - 1):
+        dx = traj.x[i + 1] - traj.x[i]
+        dy = traj.y[i + 1] - traj.y[i]
+        dt = traj.t[i + 1] - traj.t[i]
+        ds = math.hypot(dx, dy)
+        ds2 = traj.s[i + 1] - traj.s[i]
+        if ds == ds2:
+            print("ds is correct")
+        else:
+            print("ds is not identical: ds1 = ",ds," while ds2 = ",ds2)
+        dl = traj.d[i + 1] - traj.d[i]
+        vx = dx/dt
+        vy = dy/dt
+        vs = ds/dt
+        vl = dl/dt
+        v_tot = ds/dt
+        v_tot2 = math.hypot(vx,vy)
+        v_tot3 = math.hypot(vs,vl)
+        print("different v : v1 = ", v_tot," ,v2 = ",v_tot2," ,v3 = ",v_tot3)
+        v_total.append(ds/dt)
+        
+        heading_rad.append(math.atan2(dy, dx))
+    ###########################
+"""

@@ -560,7 +560,7 @@ def get_traj_follow_speed(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,target_spe
     global TARGET_L
     global MAX_T
     global MIN_T 
-    low_acc = True
+    low_acc = False # I have edited it recently
     if low_acc:
         MAX_T = 5.1
         MIN_T = 5
