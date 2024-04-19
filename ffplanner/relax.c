@@ -69,8 +69,8 @@
 
 /* fixpoint
  */
-int *lF;
-int lnum_F;
+int *lFF;
+int lnum_FF;
 int *lE;
 int lnum_E;
 
@@ -359,8 +359,8 @@ void get_A( State *S )
 
   initialize_fixpoint( S );
   
-  for ( i = 0; i < lnum_F; i++ ) {
-    activate_ft( lF[i], 0 );
+  for ( i = 0; i < lnum_FF; i++ ) {
+    activate_ft( lFF[i], 0 );
   }
   for ( i = 0; i < lnum_0P_E; i++ ) {
     if ( gef_conn[l0P_E[i]].in_E ) {
@@ -443,8 +443,8 @@ void get_A_axioms( State *S )
 
   initialize_fixpoint( S );
   
-  for ( i = 0; i < lnum_F; i++ ) {
-    activate_ft( lF[i], 0 );
+  for ( i = 0; i < lnum_FF; i++ ) {
+    activate_ft( lFF[i], 0 );
   }
   for ( i = 0; i < lnum_0P_E; i++ ) {
     if ( gef_conn[l0P_E[i]].in_E ) {
@@ -603,7 +603,7 @@ Bool build_fixpoint( State *S, int *max )
       break;
     }
     if ( time > 0 || lnum_0P_E == 0 ) {
-      if ( start_ft == lnum_F ) {
+      if ( start_ft == lnum_FF ) {
 	if ( fluents_hopeless( time ) ) {
 	  /* fixpoint, goals not reached
 	   */
@@ -630,14 +630,14 @@ Bool build_fixpoint( State *S, int *max )
      */
 
     if ( !gcost_rplans ) {
-      stop_ft = lnum_F;
+      stop_ft = lnum_FF;
     } else {
       /* first, find the latest index of facts whose cost 
        * is the same as that of leading fact
        */
-      costlevel = gft_conn[lF[start_ft]].RPGcost;
-      for ( i = start_ft; i < lnum_F; i++ ) {
-	if ( gft_conn[lF[i]].RPGcost > costlevel ) {
+      costlevel = gft_conn[lFF[start_ft]].RPGcost;
+      for ( i = start_ft; i < lnum_FF; i++ ) {
+	if ( gft_conn[lFF[i]].RPGcost > costlevel ) {
 	  break;
 	}
       }
@@ -645,7 +645,7 @@ Bool build_fixpoint( State *S, int *max )
     }
 
     for ( i = start_ft; i < stop_ft; i++ ) {
-      activate_ft( lF[i], time );
+      activate_ft( lFF[i], time );
     }
     if ( time == 0 ) {
       for ( i = 0; i < lnum_0P_E; i++ ) {
@@ -801,7 +801,7 @@ void initialize_fixpoint( State *S )
 
     /* get memory for local globals
      */
-    lF = ( int * ) calloc( gnum_ft_conn, sizeof( int ) );
+    lFF = ( int * ) calloc( gnum_ft_conn, sizeof( int ) );
     lE = ( int * ) calloc( gnum_ef_conn, sizeof( int ) );
     lch_E = ( int * ) calloc( gnum_ef_conn, sizeof( int ) );
     l0P_E = ( int * ) calloc( gnum_ef_conn, sizeof( int ) );
@@ -849,7 +849,7 @@ void initialize_fixpoint( State *S )
   lnum_E = 0;
   lnum_ch_E = 0;
 
-  lnum_F = 0;
+  lnum_FF = 0;
   for ( i = 0; i < S->num_F; i++ ) {
     if ( gft_conn[S->F[i]].in_F ) {
       continue;
@@ -1241,7 +1241,7 @@ void new_fact( int index, float RPGcost )
     if ( gft_conn[index].in_F ) {
       return;
     }
-    lF[lnum_F++] = index;
+    lFF[lnum_FF++] = index;
     gft_conn[index].in_F = TRUE;
     return;
   }
@@ -1255,33 +1255,33 @@ void new_fact( int index, float RPGcost )
       return;
     }
 
-    for ( j = 0; j < lnum_F; j++ ) {
-      if ( lF[j] == index ) break;
+    for ( j = 0; j < lnum_FF; j++ ) {
+      if ( lFF[j] == index ) break;
     }
-    if ( j == lnum_F ) {
+    if ( j == lnum_FF ) {
       printf("\n\nDEBUG ME: didn't find already *in* fact\n\n");
       exit(1);
     }
     N = j;
   } else {
     gft_conn[index].in_F = TRUE;
-    N = lnum_F;
-    lnum_F++;
+    N = lnum_FF;
+    lnum_FF++;
   }
 
   gft_conn[index].RPGcost = RPGcost;
   /* find the position i where ft needs to be inserted
    * IMPORTANT: insert new fact AFTER previous facts with
    * same value. Otherwise, the old facts will end up within
-   * the part of the lF list to be activated in the next round 
+   * the part of the lFF list to be activated in the next round 
    */
   for ( i = 0; i < N; i++ ) {
-    if ( RPGcost < gft_conn[lF[i]].RPGcost ) break;
+    if ( RPGcost < gft_conn[lFF[i]].RPGcost ) break;
   }
   for ( j = N; j > i; j-- ) {
-    lF[j] = lF[j-1];
+    lFF[j] = lFF[j-1];
   }
-  lF[i] = index;
+  lFF[i] = index;
 
 }
 
@@ -1349,10 +1349,10 @@ void reset_fixpoint( int max )
 
   int i, j;
 
-  for ( i = 0; i < lnum_F; i++ ) {
-    gft_conn[lF[i]].level = INFINITY;
-    gft_conn[lF[i]].RPGcost = INFINITY;
-    gft_conn[lF[i]].in_F = FALSE;
+  for ( i = 0; i < lnum_FF; i++ ) {
+    gft_conn[lFF[i]].level = INFINITY;
+    gft_conn[lFF[i]].RPGcost = INFINITY;
+    gft_conn[lFF[i]].in_F = FALSE;
   }
   if ( gcmd_line.debug ) {
     for ( i = 0; i < gnum_ft_conn; i++ ) {
