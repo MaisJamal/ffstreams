@@ -12,3 +12,7 @@ commonroad:
 
 apollo:
   path: "auto_driving/apollo/"
+
+
+ffplanner:
+  path: "ffplanner/ff"

@@ -232,7 +232,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     print("time of printing: ",time.time() - start)
 
     start = time.time() 
-    planner_path = os.getcwd() + "/ffplanner/ff"
+    planner_path = os.getcwd() + "/" + config['ffplanner']['path']
     pddl_path = os.getcwd() + "/" + config['lane_change']['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "lane_change_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)
