@@ -6,6 +6,10 @@ import numpy as np
 from ffstreams.ffstreams_algorithm import solve_ffstreams
 from utils.apollo_utils import parse_req_msg,UpdateToEgoOrigin,UpdateToWorldOrigin,InterpolateTraj,CorrectVelocityAcceleration
 import utils.apollo_config as cfg
+import yaml
+
+with open('config/config.yml', 'r') as file:
+    config = yaml.safe_load(file)
 
 DEBUG = False
 
@@ -42,7 +46,7 @@ def my_process():
     ego_state,obstacles = UpdateToEgoOrigin(ego_state, obstacles)
     speed_limit = 16.67 # m/s = 60 km/h
     max_acc = 5
-    file_path = "auto_driving/apollo/"
+    file_path = config['apollo']['path']
     problem_file = "problem.pddl"
     #debug
     print(ego_state)

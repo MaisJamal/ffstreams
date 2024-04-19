@@ -2,7 +2,6 @@
 from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
-from zmq import CONFLATE
 import utils.settings as stg
 from ffstreams.frenet_optimizer import FrenetPath,get_traj
 import random

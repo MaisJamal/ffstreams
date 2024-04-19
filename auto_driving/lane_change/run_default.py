@@ -24,6 +24,10 @@ import utils.settings as stg
 import time
 from utils.translator import translate_to_pddl_change_lane,translate_to_pddl_2_1, translate_to_pddlplus
 from utils.statistics import Statistics
+import yaml
+
+with open('config/config.yml', 'r') as file:
+    config = yaml.safe_load(file)
 
 ARRAY = np.array
 
@@ -148,7 +152,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder):##########
         #plt.pause(0.1) 
     ################################### save parameters to a file ###############################
     dateAtime = time.strftime("%Y%m%d-%H%M%S")
-    param_file = timestr = 'auto_driving/gifs/lane_change_gifs/single_exp'+folder+'/gif_exp_param_'+ str(exp) +'.txt'
+    param_file = timestr = config['lane_change']['gif_path'] +'single_exp'+folder+'/gif_exp_param_'+ str(exp) +'.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
     f = open(param_file, "w")
     f.write("obstacles:\n")
@@ -158,7 +162,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder):##########
     f.close()
     ###############################################################################################    
     if save_gifs:    
-        timestr = 'auto_driving/gifs/lane_change_gifs/single_exp'+folder+'/gif_exp_'+ str(exp) +'.gif'
+        timestr = config['lane_change']['gif_path'] +'single_exp'+folder+'/gif_exp_'+ str(exp) +'.gif'
 
         with imageio.get_writer(timestr, mode='I') as writer:
             for filename in filenames:
@@ -171,7 +175,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder):##########
 
 
 def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obstacles):
-    file_path = "auto_driving/lane_change/"
+    file_path = config['lane_change']['path']
     problem_file = "problem.pddl"
     rand_x_goal = 20
     confs = []
@@ -232,7 +236,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
 
     start = time.time() 
     planner_path = os.getcwd() + "/ffplanner/ff"
-    pddl_path = os.getcwd() + "/auto_driving/lane_change/"
+    pddl_path = os.getcwd() + "/"+config['lane_change']['path'] 
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "lane_change_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)
     planner_output = str(planner_output)  
@@ -514,9 +518,9 @@ def main():
 
         #print(len(final_traj.s_dd),len(final_traj.d_dd),len(final_traj.s_ddd),len(final_traj.s_ddd))    
         OPM_values.append(calc_OPM_metric(final_traj))
-        stat.save_to_file('auto_driving/gifs/lane_change_gifs/single_exp'+folder,exp)
+        stat.save_to_file(config['lane_change']['gif_path'] +'single_exp'+folder,exp)
         plot_traj(final_traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder)# trajectories[0]
-    param_file = 'auto_driving/gifs/lane_change_gifs/single_exp'+folder+'/statistics.txt'
+    param_file = config['lane_change']['gif_path'] +'single_exp'+folder+'/statistics.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
 
     f = open(param_file, "w")

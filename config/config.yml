@@ -1,0 +1,14 @@
+keep_lane:
+  path: "auto_driving/keep_lane/"
+  gif_path: "auto_driving/gifs/keep_lane_gifs/"
+
+lane_change:
+  path : "auto_driving/lane_change/"
+  gif_path: "auto_driving/gifs/lane_change_gifs/"
+
+commonroad:
+  path: "auto_driving/commonroad/"
+  gif_path: "auto_driving/gifs/commonroad_gifs/" 
+
+apollo:
+  path: "auto_driving/apollo/"

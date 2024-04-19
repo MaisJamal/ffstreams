@@ -25,11 +25,20 @@ import time
 from utils.translator import translate_to_pddl_keep_lane
 from utils.statistics import Statistics
 import copy
+import yaml
+
+
+with open('config/config.yml', 'r') as file:
+    config = yaml.safe_load(file)
 
 ARRAY = np.array
 overtake_decision = False
 overtake_counter = 0
 overtake_traj = FrenetPath()
+
+
+
+
 
 def extract_plan(string):
     q_from = []
@@ -173,7 +182,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or
         #plt.pause(0.1) 
     ################################### save parameters to a file ###############################
     dateAtime = time.strftime("%Y%m%d-%H%M%S")
-    param_file = timestr = 'auto_driving/gifs/keep_lane_gifs/single_exp'+folder+'/gif_exp_param_'+ str(exp) +'.txt'
+    param_file = timestr = config['keep_lane']['gif_path']+ 'single_exp'+folder+'/gif_exp_param_'+ str(exp) +'.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
     f = open(param_file, "w")
     f.write("obstacles:\n")
@@ -183,7 +192,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or
     f.close()
     ###############################################################################################    
     if save_gifs:    
-        timestr = 'auto_driving/gifs/keep_lane_gifs/single_exp'+folder+'/gif_exp_'+ str(exp) 
+        timestr = config['keep_lane']['gif_path']+ 'single_exp'+folder+'/gif_exp_'+ str(exp) 
         if overtake_or_yield[exp] == 1: #overtake
             timestr  = timestr +'_overtake'
         elif overtake_or_yield[exp] == 2: #yield then overtake
@@ -203,7 +212,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     global overtake_decision
     global overtake_counter 
     global overtake_traj 
-    file_path = "auto_driving/keep_lane/"
+    file_path = config['keep_lane']['path']
     problem_file = "problem.pddl"
     rand_x_goal = 20
     confs = []
@@ -584,7 +593,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
 
     start = time.time() 
     planner_path = os.getcwd() + "/ffplanner/ff"
-    pddl_path = os.getcwd() + "/auto_driving/keep_lane/"
+    pddl_path = os.getcwd() + "/" + config['keep_lane']['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "keep_lane_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)
     planner_output = str(planner_output)  
@@ -907,10 +916,10 @@ def main():
                 failed = True
                 has_no_decision += 1
                 break
-        stat.save_to_file('auto_driving/gifs/keep_lane_gifs/single_exp'+folder,exp,failed=failed)
+        stat.save_to_file(config['keep_lane']['gif_path']+ 'single_exp'+folder,exp,failed=failed)
 
         plot_traj(final_traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or_yield)# trajectories[0]
-    param_file = 'auto_driving/gifs/keep_lane_gifs/single_exp'+folder+'/statistics.txt'
+    param_file = config['keep_lane']['gif_path']+ 'single_exp'+folder+'/statistics.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
 
     f = open(param_file, "w")

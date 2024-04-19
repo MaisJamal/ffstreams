@@ -27,6 +27,11 @@ from utils.statistics import Statistics
 import utils.commonroad_scenario_extractor as extractor
 from utils.commonroad_scenario_extractor import extract_front_obstacle
 import copy
+import yaml
+
+
+with open('config/config.yml', 'r') as file:
+    config = yaml.safe_load(file)
 
 ARRAY = np.array
 overtake_decision = False
@@ -175,7 +180,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or
         #plt.pause(0.1) 
     ################################### save parameters to a file ###############################
     dateAtime = time.strftime("%Y%m%d-%H%M%S")
-    param_file = timestr = 'auto_driving/gifs/commonroad_gifs/single_exp'+folder+'/gif_exp_param_'+ str(exp) +'.txt'
+    param_file = timestr = config['commonroad']['gif_path']+'single_exp'+folder+'/gif_exp_param_'+ str(exp) +'.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
     f = open(param_file, "w")
     f.write("obstacles:\n")
@@ -185,7 +190,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or
     f.close()
     ###############################################################################################    
     if save_gifs:    
-        timestr = 'auto_driving/gifs/commonroad_gifs/single_exp'+folder+'/gif_exp_'+ str(exp) 
+        timestr = config['commonroad']['gif_path']+ 'single_exp'+folder+'/gif_exp_'+ str(exp) 
         if overtake_or_yield[exp] == 1: #overtake
             timestr  = timestr +'_overtake'
         elif overtake_or_yield[exp] == 2: #yield then overtake
@@ -206,7 +211,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstac
     global overtake_counter 
     global overtake_traj 
     goal_left = False    # very important to distinguish keep lane scenarios from change to left
-    file_path = "auto_driving/commonroad/"
+    file_path = config['commonroad']['path']
     problem_file = "problem.pddl"
     confs = []
     conf_num = 1
@@ -597,7 +602,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstac
 
     start = time.time() 
     planner_path = os.getcwd() + "/ffplanner/ff"
-    pddl_path = os.getcwd() + "/auto_driving/commonroad/"
+    pddl_path = os.getcwd() + "/"+config['commonroad']['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "cr_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)
     planner_output = str(planner_output)  
@@ -773,7 +778,7 @@ def main():
             ###########################################
 
     OPM_values.append(calc_OPM_metric(final_traj))
-    stat.save_to_file('auto_driving/gifs/commonroad_gifs/single_exp'+folder,0)
+    stat.save_to_file(config['commonroad']['gif_path']+'single_exp'+folder,0)
 
 
 
@@ -1042,9 +1047,9 @@ def main():
 
         #print(len(final_traj.s_dd),len(final_traj.d_dd),len(final_traj.s_ddd),len(final_traj.s_ddd))    
         OPM_values.append(calc_OPM_metric(final_traj))
-        stat.save_to_file('auto_driving/gifs/commonroad_gifs/single_exp'+folder,exp)
+        stat.save_to_file(config['commonroad']['gif_path']+'single_exp'+folder,exp)
         plot_traj(final_traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or_yield)# trajectories[0]
-    param_file = 'auto_driving/gifs/commonroad_gifs/single_exp'+folder+'/statistics.txt'
+    param_file = config['commonroad']['gif_path']+'single_exp'+folder+'/statistics.txt'
     os.makedirs(os.path.dirname(param_file), exist_ok=True)
 
     f = open(param_file, "w")
