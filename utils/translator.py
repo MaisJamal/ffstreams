@@ -2,8 +2,8 @@
 from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
-import utils.settings as stg
-from ffstreams.frenet_optimizer import FrenetPath,get_traj
+import ffstreams.utils.settings as stg
+from ffstreams.ffstreams.frenet_optimizer import FrenetPath,get_traj
 import random
 from numpy.linalg import norm
 import time
@@ -473,7 +473,7 @@ def translate_to_pddl_keep_lane(there_is_front_obs,confs,traj_dict,traj_type,tra
 
 
 
-def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_name,problem_file_name):
+def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_name,problem_file_name,obs_traj):
     #INIT_SPEED = 20 / 3.6
     #all_y=[stg.wy_middle_lower_lane[0],stg.wy_middle_upper_lane[0]]
     total_time = 10 #seconds
@@ -559,6 +559,16 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
                     f.write("\t\t(= (at_x q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].x[k]))
                     f.write("\t\t(= (at_y q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].y[k]))
                     f.write("\t\t(= (at_time q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].t[k]))
+                    
+                    if len(obstacles):
+                        for idx in range(len(obstacles)):
+                            
+                            obs_x = obs_traj[idx,0,k*2,0]
+                            obs_y = obs_traj[idx,0,k*2,1]
+                            f.write("\t\t(= (obst_at_x obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_x))
+                            f.write("\t\t(= (obst_at_y obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_y))
+                    
+                    
                     if k != (len(cut_traj_dict[(i,j)].x)-1):
                         f.write("\t\t(next q%d_%d_%d q%d_%d_%d q%d)\n\n" % (i,j,k,i,j,k+1,j))
                 f.write("\t\t(next q%d_%d_%d q%d q%d)\n" % (i,j,len(cut_traj_dict[(i,j)].x)-1,j,j))
@@ -572,20 +582,28 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
         f.write("\t\t(= (at_x q%d) %.2f )\n" % (i, confs[i][0]))
         f.write("\t\t(= (at_y q%d) %.2f )\n" % (i, confs[i][1]))
         f.write("\t\t(= (at_time q%d) %.2f )\n\n" % (i, confs_times[i]))
+
+        if len(obstacles):
+            for idx in range(len(obstacles)):
+                last_idx = 26## not correct len(cut_traj_dict[(i,j)].x)
+                obs_x = obs_traj[idx,0,last_idx*2,0]
+                obs_y = obs_traj[idx,0,last_idx*2,1]
+                f.write("\t\t(= (obst_at_x obs%d q%d) %.2f )\n" % (idx,i,obs_x))
+                f.write("\t\t(= (obst_at_y obs%d q%d) %.2f )\n" % (idx,i,obs_y))
     f.write("\n\n")
 
     ############# defining obstacles ########################
-    if len(obstacles):
-        for i in range(len(obstacles)):
+    # if len(obstacles):
+    #     for i in range(len(obstacles)):
             
-            obs_start_x = obstacles[i][0][0]
-            obs_start_y = obstacles[i][0][1]
-            obs_speed = obstacles[i][2][0]
+    #         obs_start_x = obstacles[i][0][0]
+    #         obs_start_y = obstacles[i][0][1]
+    #         obs_speed = obstacles[i][2][0]
             
-            #f.write("\t\t(obstacle obs%d_%d)\n" % (i,k))
-            f.write("\t\t(= (obst_at_x obs%d) %.2f)\n" % (i,obs_start_x))
-            f.write("\t\t(= (obst_at_y obs%d) %.2f)\n" % (i,obs_start_y))
-            f.write("\t\t(= (obst_at_speed obs%d) %.2f)\n" % (i,obs_speed))
+    #         #f.write("\t\t(obstacle obs%d_%d)\n" % (i,k))
+    #         f.write("\t\t(= (obst_at_x obs%d) %.2f)\n" % (i,obs_start_x))
+    #         f.write("\t\t(= (obst_at_y obs%d) %.2f)\n" % (i,obs_start_y))
+    #         f.write("\t\t(= (obst_at_speed obs%d) %.2f)\n" % (i,obs_speed))
             
 
     f.write("\t)\n")

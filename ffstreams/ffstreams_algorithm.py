@@ -63,7 +63,7 @@ def solve_ffstreams(ego_state,obstacles):
     """
     there_is_front_obs = False
     translate_to_pddl_apollo(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,cfg.FILE_PATH,cfg.PROBLEM_FILE)
-    planner_path = os.getcwd() + "/ffplanner/ff"
+    planner_path = os.getcwd() + "/ffstreams/ffplanner/ff"
     pddl_path = os.getcwd() + "/"+ cfg.FILE_PATH
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "apollo_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
 

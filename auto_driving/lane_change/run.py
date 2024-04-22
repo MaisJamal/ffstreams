@@ -9,27 +9,27 @@ import subprocess
 import re
 import imageio.v2 as imageio
 from random import choices
-from metrics.OPM import calc_OPM_metric
+from ffstreams.metrics.OPM import calc_OPM_metric
 
-from utils.viewer import get_rect
+from ffstreams.utils.viewer import get_rect
 
 from matplotlib import gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import random
-from ffstreams.frenet_optimizer import generate_target_course,FrenetPath,get_traj
-from auto_driving.lane_change.lane_change_streams import get_yield_change_gen,get_traj_change_gen,get_motion_gen ,get_connect_gen,get_yield_motion_gen,get_follow_motion_gen,get_second_connect_gen
-import utils.settings as stg
+from ffstreams.ffstreams.frenet_optimizer import generate_target_course,FrenetPath,get_traj
+from ffstreams.auto_driving.lane_change.lane_change_streams import get_yield_change_gen,get_traj_change_gen,get_motion_gen ,get_connect_gen,get_yield_motion_gen,get_follow_motion_gen,get_second_connect_gen
+import ffstreams.utils.settings as stg
 import time
-from utils.translator import translate_to_pddl_change_lane,translate_to_pddl_2_1, translate_to_pddlplus
-from utils.statistics import Statistics
-import utils.commonroad_scenario_extractor as extractor
-from auto_driving.keep_lane.keep_lane_streams import get_change_to_left
+from ffstreams.utils.translator import translate_to_pddl_change_lane,translate_to_pddl_2_1, translate_to_pddlplus
+from ffstreams.utils.statistics import Statistics
+import ffstreams.utils.commonroad_scenario_extractor as extractor
+from ffstreams.auto_driving.keep_lane.keep_lane_streams import get_change_to_left
 import yaml 
 
 ARRAY = np.array
-with open('config/config.yml', 'r') as file:
+with open('ffstreams/config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 
 def extract_plan(string):
@@ -236,7 +236,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     print("time of printing: ",time.time() - start)
 
     start = time.time() 
-    planner_path = os.getcwd() + "/ffplanner/ff"
+    planner_path = os.getcwd() + "/ffstreams/ffplanner/ff"
     pddl_path = os.getcwd() + "/" +config['lane_change']['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "lane_change_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)
@@ -292,7 +292,7 @@ def main():
 
     
     #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"
-    scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
+    scene_path = "ffstreams/scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
     #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"
 
     ################ collision check ################

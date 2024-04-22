@@ -1,14 +1,24 @@
 keep_lane:
-  path: "auto_driving/keep_lane/"
-  gif_path: "auto_driving/gifs/keep_lane_gifs/"
+  path: "ffstreams/auto_driving/keep_lane/"
+  gif_path: "ffstreams/auto_driving/gifs/keep_lane_gifs/"
 
 lane_change:
-  path : "auto_driving/lane_change/"
-  gif_path: "auto_driving/gifs/lane_change_gifs/"
+  path : "ffstreams/auto_driving/lane_change/"
+  gif_path: "ffstreams/auto_driving/gifs/lane_change_gifs/"
 
 commonroad:
-  path: "auto_driving/commonroad/"
-  gif_path: "auto_driving/gifs/commonroad_gifs/" 
+  path: "ffstreams/auto_driving/commonroad/"
+  gif_path: "ffstreams/auto_driving/gifs/commonroad_gifs/" 
+
+cr_scene:
+  #path: "datasets/commonroad/CHN_Tianjin-12_28_T-1.xml"
+  #path: "datasets/commonroad/USA_US101-1_1_T-1.xml"     #change_scenario
+  path: "datasets/commonroad/DEU_Nuremberg-39_5_T-1.xml"  
+  #path: "datasets/commonroad/DEU_Nuremberg-35_1_T-1.xml"
+  #path: "datasets/commonroad/ITA_Empoli-18_1_T-1.xml" # only 4 seconds
 
 apollo:
-  path: "auto_driving/apollo/"
+  path: "ffstreams/auto_driving/apollo/"
+
+prediction_visualization:
+  visualize: True

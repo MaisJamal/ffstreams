@@ -1,8 +1,8 @@
 from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
-import utils.settings as stg
-from ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
+import ffstreams.utils.settings as stg
+from ffstreams.ffstreams.frenet_optimizer import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
 import random
 from random import choices
 from numpy.linalg import norm

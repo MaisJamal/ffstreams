@@ -30,7 +30,7 @@ where X_f, X_l are longitudinal position of the following and leading vehicle,
 """
 
 
-import utils.settings as stg
+import ffstreams.utils.settings as stg
 
 
 

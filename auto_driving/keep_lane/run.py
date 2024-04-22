@@ -9,26 +9,26 @@ import subprocess
 import re
 import imageio.v2 as imageio
 from random import choices
-from metrics.OPM import calc_OPM_metric
+from ffstreams.metrics.OPM import calc_OPM_metric
 
-from utils.viewer import get_rect
+from ffstreams.utils.viewer import get_rect
 
 from matplotlib import gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import random
-from ffstreams.frenet_optimizer import FrenetPath
-from auto_driving.keep_lane.keep_lane_streams import get_yield,get_traj_change_gen, get_follow_speed,get_change_to_left,get_change_to_right,get_follow_speed_overtake
-import utils.settings as stg
+from ffstreams.ffstreams.frenet_optimizer import FrenetPath
+from ffstreams.auto_driving.keep_lane.keep_lane_streams import get_yield,get_traj_change_gen, get_follow_speed,get_change_to_left,get_change_to_right,get_follow_speed_overtake
+import ffstreams.utils.settings as stg
 import time
-from utils.translator import translate_to_pddl_keep_lane
-from utils.statistics import Statistics
+from ffstreams.utils.translator import translate_to_pddl_keep_lane
+from ffstreams.utils.statistics import Statistics
 import copy
 import yaml
 
 
-with open('config/config.yml', 'r') as file:
+with open('ffstreams/config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 
 ARRAY = np.array
@@ -592,7 +592,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, target_speed,obsta
     print("time of printing: ",time.time() - start)
 
     start = time.time() 
-    planner_path = os.getcwd() + "/ffplanner/ff"
+    planner_path = os.getcwd() + "/ffstreams/ffplanner/ff"
     pddl_path = os.getcwd() + "/" + config['keep_lane']['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "keep_lane_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)

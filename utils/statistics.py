@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-from metrics.TTC import calc_TTC_traj, calc_TTC_traj_lane_change
+from ffstreams.metrics.TTC import calc_TTC_traj, calc_TTC_traj_lane_change
 import os
 
 class Statistics:

@@ -9,7 +9,7 @@ https://arxiv.org/pdf/2001.03908.pdf
 
 """
 
-from ffstreams.frenet_optimizer import FrenetPath
+from ffstreams.ffstreams.frenet_optimizer import FrenetPath
 
 
 # metric parameter
