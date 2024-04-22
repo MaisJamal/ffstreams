@@ -9,28 +9,29 @@ import subprocess
 import re
 import imageio.v2 as imageio
 from random import choices
-from metrics.OPM import calc_OPM_metric
+from ffstreams.metrics.OPM import calc_OPM_metric
 
-from utils.viewer import get_rect
+from ffstreams.utils.viewer import get_rect
 
 from matplotlib import gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import random
-from ffstreams.frenet_optimizer_cr import FrenetPath
-from auto_driving.commonroad.keep_lane_streams import get_yield,get_traj_change_gen, get_follow_speed,get_change_to_left,get_change_to_right,get_follow_speed_overtake
-import utils.settings as stg
+from ffstreams.ffstreams.frenet_optimizer_cr import FrenetPath
+from ffstreams.auto_driving.commonroad.keep_lane_streams import get_yield,get_traj_change_gen, get_follow_speed,get_change_to_left,get_change_to_right,get_follow_speed_overtake
+import ffstreams.utils.settings as stg
 import time
-from utils.translator import translate_to_pddl_cr
-from utils.statistics import Statistics
-import utils.commonroad_scenario_extractor as extractor
-from utils.commonroad_scenario_extractor import extract_front_obstacle
+from ffstreams.utils.translator import translate_to_pddl_cr
+from ffstreams.utils.statistics import Statistics
+import ffstreams.utils.commonroad_scenario_extractor as extractor
+from ffstreams.utils.commonroad_scenario_extractor import extract_front_obstacle
 import copy
+from predict import predict_traj
 import yaml
 
 
-with open('config/config.yml', 'r') as file:
+with open('ffstreams/config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 
 ARRAY = np.array
@@ -206,7 +207,7 @@ def plot_traj(traj,obstacles,obstacles_xs,obstacles_ys,dt,exp,folder,overtake_or
             os.remove(filename)       
 
 
-def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstacles):
+def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstacles,obs_traj):
     global overtake_decision
     global overtake_counter 
     global overtake_traj 
@@ -597,11 +598,11 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstac
    
     start = time.time()
     
-    translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file)
+    translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file,obs_traj)
     print("time of printing: ",time.time() - start)
 
     start = time.time() 
-    planner_path = os.getcwd() + "/ffplanner/ff"
+    planner_path = os.getcwd() + "/ffstreams/ffplanner/ff"
     pddl_path = os.getcwd() + "/"+config['commonroad']['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "cr_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
     print("excution time of FF planner: ",  time.time() - start)
@@ -636,16 +637,29 @@ def update_obstacles(obstacles,dt, accelerations,obs6_update_time,curr_time):
 
     return obstacles_new
 
-def call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,init_scene_obstacles,scen_rotation, lane_width,target_y,speed_limit):
+def call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,init_scene_obstacles,scen_rotation, lane_width,target_y,speed_limit,obs_traj):
 
-    trajectories,confs,traj_dict,final_traj_type = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,init_scene_obstacles)
+    trajectories,confs,traj_dict,final_traj_type = solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,init_scene_obstacles,obs_traj)
     if len(trajectories) < 1:
         print("no plan found")
     else:
         print("change left")
     return trajectories,confs,traj_dict,final_traj_type
 
+def get_const_speed_obs_traj(obstacles):
+    print(obstacles)
+    num_obstacles = len(obstacles)
+    obs_traj = np.empty([num_obstacles, 1, 60,2]) # dimensions of predicted trajectories from QCNet
+    for i in range(num_obstacles):
+        obs_init_x = obstacles[i][0][0]
+        obs_init_y = obstacles[i][0][1]
+        obs_init_v = obstacles[i][2][0]
+        for k in range(60):
+            obs_traj[i,0,k,0] = obs_init_x + obs_init_v*(k/10.0) # x position of obstacle
+            obs_traj[i,0,k,1] = obs_init_y  # y position of obstacle
 
+    pred_traj,pred_prob = predict_traj()
+    return obs_traj
 
 
 def main():
@@ -662,11 +676,11 @@ def main():
 
     
     #scene_path = "scenarios/commonroad/lane_change_scenarios/DEU_Muc-2_1_T-1.xml"#NO
-    scene_path = "scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
+    #scene_path = "ffstreams/scenarios/commonroad/lane_change_scenarios/USA_US101-1_1_T-1.xml"     # good example
     #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"  #NO
    # scene_path = "scenarios/commonroad/keep_lane_scenarios/ESP_Monzon-2_1_T-1.xml"  # 2nd scenario, maybe is working
-    #scene_path = "scenarios/commonroad/keep_lane_scenarios/ITA_Empoli-18_1_T-1.xml"
-    
+    #scene_path = "ffstreams/scenarios/commonroad/keep_lane_scenarios/ITA_Empoli-18_1_T-1.xml"
+    scene_path = "ffstreams/scenarios/commonroad/keep_lane_scenarios/DEU_Nuremberg-39_5_T-1.xml"
     ################ collision check ################
     #extractor.all_functions(scene_path)
 
@@ -730,7 +744,8 @@ def main():
     max_speed = 16.2 # 60 km/h
     for i in range(2,total_time_steps,int(delta_time/standard_delta)):
         print ("i ",i)
-        trajectories,confs,traj_dict,final_traj_type = call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,new_obs,scen_rotation, lane_width,target_y,max_speed)
+        obs_traj = get_const_speed_obs_traj(new_obs)
+        trajectories,confs,traj_dict,final_traj_type = call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,new_obs,scen_rotation, lane_width,target_y,max_speed,obs_traj)
         if len(trajectories) < 1:
             print("SOMETHING IS WRONG")
         else: 
@@ -783,7 +798,7 @@ def main():
 
 
 
-    extractor.draw_traj_with_scenario(final_traj,scene_path)
+    #extractor.draw_traj_with_scenario(final_traj,scene_path)
 
 
 
