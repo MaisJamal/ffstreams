@@ -211,7 +211,7 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstac
     global overtake_decision
     global overtake_counter 
     global overtake_traj 
-    goal_left = False    # very important to distinguish keep lane scenarios from change to left
+    goal_left = True    # very important to distinguish keep lane scenarios from change to left
     file_path = config['commonroad']['path']
     problem_file = "problem.pddl"
     confs = []
@@ -551,9 +551,22 @@ def solve_pddl_lane_change(q0,acc0,curr_dl,curr_ddl,target_y, speed_limit,obstac
             lambda event: [exit(0) if event.key == 'escape' else None])
         plt.plot(stg.tx, stg.ty,"y--")
         plt.plot(stg.tx2, stg.ty2,"y--")
+        # additional highway
+        plt.plot(stg.tx4, stg.ty4,"y--")
+        plt.plot(stg.tx4, stg.ty5,"y--")
+        plt.plot(stg.tx4, stg.ty6,"y--")
+        plt.plot(stg.tx4, stg.ty7,"y--")
+        ###
         plt.plot(stg.txBound1, stg.tyBound1,"c")
         plt.plot(stg.txBound2, stg.tyBound2,"c")
         plt.plot(stg.txBound3, stg.tyBound3,"c")
+        #plt.plot(stg.txBound4, stg.tyBound4,"c")
+        # additional highway
+        plt.plot(stg.txBound5, stg.tyBound5,"c")
+        plt.plot(stg.txBound5, stg.tyBound6,"c")
+        plt.plot(stg.txBound5, stg.tyBound7,"c")
+        plt.plot(stg.txBound5, stg.tyBound8,"c")
+        #####
         for obs in obstacles:  #plot obstacles
             rect = get_rect((obs[0][0],obs[0][1]),obs[1]) # in the form [(left,bottom),x_extend,y_extend]
             rect_patch=mpatches.Rectangle(rect[0], rect[1], rect[2])#((31,15),14,7, fill = False,color = "purple",linewidth = 2)
@@ -658,7 +671,7 @@ def get_const_speed_obs_traj(obstacles):
             obs_traj[i,0,k,0] = obs_init_x + obs_init_v*(k/10.0) # x position of obstacle
             obs_traj[i,0,k,1] = obs_init_y  # y position of obstacle
 
-    pred_traj,pred_prob = predict_traj()
+    #pred_traj,pred_prob = predict_traj()
     return obs_traj
 
 
@@ -680,7 +693,8 @@ def main():
     #scene_path = "scenarios/commonroad/collision_checker/USA_US101-3_3_T-1.xml"  #NO
    # scene_path = "scenarios/commonroad/keep_lane_scenarios/ESP_Monzon-2_1_T-1.xml"  # 2nd scenario, maybe is working
     #scene_path = "ffstreams/scenarios/commonroad/keep_lane_scenarios/ITA_Empoli-18_1_T-1.xml"
-    scene_path = "ffstreams/scenarios/commonroad/keep_lane_scenarios/DEU_Nuremberg-39_5_T-1.xml"
+    #scene_path = "ffstreams/scenarios/commonroad/keep_lane_scenarios/DEU_Nuremberg-39_5_T-1.xml"
+    scene_path = "ffstreams/scenarios/commonroad/keep_lane_scenarios/USA_US101-22_3_T-1.xml"
     ################ collision check ################
     #extractor.all_functions(scene_path)
 

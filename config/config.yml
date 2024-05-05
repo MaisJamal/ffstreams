@@ -13,7 +13,8 @@ commonroad:
 cr_scene:
   #path: "datasets/commonroad/CHN_Tianjin-12_28_T-1.xml"
   #path: "datasets/commonroad/USA_US101-1_1_T-1.xml"     #change_scenario
-  path: "datasets/commonroad/DEU_Nuremberg-39_5_T-1.xml"  
+  #path: "datasets/commonroad/DEU_Nuremberg-39_5_T-1.xml"  
+  path: "datasets/commonroad/USA_US101-22_3_T-1.xml"
   #path: "datasets/commonroad/DEU_Nuremberg-35_1_T-1.xml"
   #path: "datasets/commonroad/ITA_Empoli-18_1_T-1.xml" # only 4 seconds
 

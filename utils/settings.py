@@ -30,6 +30,9 @@ def init(lane_width):
     global ty3
     global tx4
     global ty4
+    global ty5
+    global ty6
+    global ty7
     global txBound1
     global tyBound1
     global txBound2
@@ -40,6 +43,9 @@ def init(lane_width):
     global tyBound4
     global txBound5
     global tyBound5
+    global tyBound6
+    global tyBound7
+    global tyBound8
 
     #global csp
     # for animation
@@ -56,6 +62,9 @@ def init(lane_width):
     wy_middle_upper_lane  = [pt + LANE_WIDTH for pt in wy_middle_lower_lane]
     wy_middle_lower_lower_lane = [pt - LANE_WIDTH for pt in wy_middle_lower_lane]
     wy_middle_upper_upper_lane = [pt + LANE_WIDTH for pt in wy_middle_upper_lane]
+    wy_middle_upper_upper_upper_lane = [pt + 2*LANE_WIDTH for pt in wy_middle_upper_lane]
+    wy_middle_upper_upper_2upper_lane = [pt + 3*LANE_WIDTH for pt in wy_middle_upper_lane]
+    wy_middle_upper_upper_3upper_lane = [pt + 4*LANE_WIDTH for pt in wy_middle_upper_lane]
 
     tx = np.arange(0, wx_middle_lane[-1], 0.1)
     ty = np.full((len(tx),), wy_middle_lower_lane[0])
@@ -69,6 +78,10 @@ def init(lane_width):
     tx4 = np.arange(0, wx_middle_lane[-1], 0.1)
     ty4 = np.full((len(tx4),), wy_middle_upper_upper_lane[0])
 
+    ty5 = np.full((len(tx4),), wy_middle_upper_upper_upper_lane[0])
+    ty6 = np.full((len(tx4),), wy_middle_upper_upper_2upper_lane[0])
+    ty7 = np.full((len(tx4),), wy_middle_upper_upper_3upper_lane[0])
+
     #csp = []
     # lane bounds from down to up:
     bound1 = [pt - LANE_WIDTH/2 for pt in wy_middle_lower_lane]
@@ -77,6 +90,9 @@ def init(lane_width):
     bound4 = [pt - LANE_WIDTH*1.5 for pt in wy_middle_lower_lane]
     bound5 = [pt + LANE_WIDTH*1.5 + LANE_WIDTH for pt in wy_middle_lower_lane]
 
+    bound6 = [pt + LANE_WIDTH*2.5 + LANE_WIDTH for pt in wy_middle_lower_lane]
+    bound7 = [pt + LANE_WIDTH*3.5 + LANE_WIDTH for pt in wy_middle_lower_lane]
+    bound8 = [pt + LANE_WIDTH*4.5 + LANE_WIDTH for pt in wy_middle_lower_lane]
     ######
 
 
@@ -95,6 +111,9 @@ def init(lane_width):
     txBound5 = np.arange(0, wx_middle_lane[-1], 0.1)
     tyBound5 = np.full((len(txBound5),), bound5[0]) 
 
+    tyBound6 = np.full((len(txBound5),), bound6[0]) 
+    tyBound7 = np.full((len(txBound5),), bound7[0]) 
+    tyBound8 = np.full((len(txBound5),), bound8[0])
     # Parameter
     MAX_SPEED = 80.0 / 3.6  # maximum speed [m/s]
     MAX_ACCEL = 2.0  # maximum acceleration [m/ss]

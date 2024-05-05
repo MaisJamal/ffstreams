@@ -75,9 +75,10 @@ def GetRotationAndLaneWidth(scenario):
     print(len(scenario.lanelet_network.lanelets))
     print(scenario.lanelet_network.lanelets[0].left_vertices[0][1])
     print(scenario.lanelet_network.lanelets[0].right_vertices[0][1])
+    width = scenario.lanelet_network.lanelets[0].inner_distance
     print("raw width ",(scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1]))
     lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
-    if lane_width < 2 :
+    if lane_width < 2.5 :
         lane_width = 3.5
     return theta,lane_width
 
@@ -108,7 +109,10 @@ def extract_data(file_path):
 
     # usefull parameters
     theta, lane_width = GetRotationAndLaneWidth(scenario)  #theta in degrees
-    
+    #spetial case with one scenario
+    if file_path == "ffstreams/scenarios/commonroad/keep_lane_scenarios/USA_US101-22_3_T-1.xml":
+        theta -= 1.0
+    #####
     SCENARIO_ROTATION_DEGREES = theta
 
 
@@ -150,7 +154,7 @@ def extract_data(file_path):
             p_y = p_y + SHIFT_IN_FFSTREAM_Y -INIT_STATE.position[1]
             
             p_v = dyn_obst.state_at_time(i).velocity
-            print("x y v ",dyn_obst.state_at_time(i).position[0],dyn_obst.state_at_time(i).position[1],dyn_obst.state_at_time(i).velocity)
+            #print("x y v ",dyn_obst.state_at_time(i).position[0],dyn_obst.state_at_time(i).position[1],dyn_obst.state_at_time(i).velocity)
             traj.append((p_x,p_y,p_v))
         # fix error in obs velocity
         """
