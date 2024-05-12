@@ -25,7 +25,7 @@ import time
 from ffstreams.utils.translator import translate_to_pddl_cr
 from ffstreams.utils.statistics import Statistics
 import ffstreams.utils.commonroad_scenario_extractor as extractor
-from ffstreams.utils.commonroad_scenario_extractor import extract_front_obstacle
+from ffstreams.utils.commonroad_scenario_extractor import extract_front_obstacle,rotate_obstacles_in_scene
 import copy
 from predict import predict_traj
 import yaml
@@ -659,8 +659,7 @@ def call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,init_scene_obstacles,scen_rotat
         print("change left")
     return trajectories,confs,traj_dict,final_traj_type
 
-def get_const_speed_obs_traj(obstacles):
-    print(obstacles)
+def get_const_speed_obs_traj(obstacles,scene_path,time_step):
     num_obstacles = len(obstacles)
     obs_traj = np.empty([num_obstacles, 1, 60,2]) # dimensions of predicted trajectories from QCNet
     for i in range(num_obstacles):
@@ -670,9 +669,17 @@ def get_const_speed_obs_traj(obstacles):
         for k in range(60):
             obs_traj[i,0,k,0] = obs_init_x + obs_init_v*(k/10.0) # x position of obstacle
             obs_traj[i,0,k,1] = obs_init_y  # y position of obstacle
+    ### predict trajectories
+    pred_traj,pred_prob = predict_traj(time_step)
+    pred_obs_traj = np.empty([num_obstacles, 1, 60,2])
+    ### get trajectories with the highest probability
+    for i in range(num_obstacles):
+        highest_probability_idx = np.argmax(pred_prob[i])
+        pred_obs_traj[i,0,:,:] = pred_traj[i,highest_probability_idx,:,:]
+    ### rotate the predicted trajectories to transfer to Frenet 
+    pred_obs_traj = rotate_obstacles_in_scene(pred_obs_traj,num_obstacles,scene_path)
 
-    #pred_traj,pred_prob = predict_traj()
-    return obs_traj
+    return pred_obs_traj#obs_traj
 
 
 def main():
@@ -756,9 +763,9 @@ def main():
     final_traj.d_ddd = [0]
     target_y = init_y + lane_width
     max_speed = 16.2 # 60 km/h
-    for i in range(2,total_time_steps,int(delta_time/standard_delta)):
+    for i in range(52,total_time_steps,int(delta_time/standard_delta)):
         print ("i ",i)
-        obs_traj = get_const_speed_obs_traj(new_obs)
+        obs_traj = get_const_speed_obs_traj(new_obs,scene_path,time_step=i)
         trajectories,confs,traj_dict,final_traj_type = call_ffstreams_once(q0,acc0,curr_dl,curr_ddl,new_obs,scen_rotation, lane_width,target_y,max_speed,obs_traj)
         if len(trajectories) < 1:
             print("SOMETHING IS WRONG")

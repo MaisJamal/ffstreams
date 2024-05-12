@@ -75,7 +75,6 @@ def GetRotationAndLaneWidth(scenario):
     print(len(scenario.lanelet_network.lanelets))
     print(scenario.lanelet_network.lanelets[0].left_vertices[0][1])
     print(scenario.lanelet_network.lanelets[0].right_vertices[0][1])
-    width = scenario.lanelet_network.lanelets[0].inner_distance
     print("raw width ",(scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1]))
     lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
     if lane_width < 2.5 :
@@ -397,3 +396,41 @@ def  extract_front_obstacle(obstacles,q_ego):
                     if obstacles[i][0][0] < obstacles[front_obs_idx][0][0]: # found a closed front obstacle
                         front_obs_idx = i
     return front_obs_idx
+
+
+def rotate_obstacles_in_scene(obs_pred_traj,num_obstacles,file_path):
+    global SHIFT_IN_FFSTREAM_Y
+    global SCENARIO_ROTATION_DEGREES
+    # read in the scenario and planning problem set
+    scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
+    planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
+
+    # get ego initial state in the scenario
+    INIT_STATE = planning_problem.initial_state
+
+    # usefull parameters
+    theta, lane_width = GetRotationAndLaneWidth(scenario)  #theta in degrees
+    #spetial case with one scenario
+    if file_path == "ffstreams/scenarios/commonroad/keep_lane_scenarios/USA_US101-22_3_T-1.xml":
+        theta -= 1.0
+    #####
+    SCENARIO_ROTATION_DEGREES = theta
+
+    angle = -1*math.radians(SCENARIO_ROTATION_DEGREES)
+    total_steps = obs_pred_traj[0,0,:,:].shape[0]
+    for o in range(num_obstacles):
+        for i in range(total_steps):
+            p_x = obs_pred_traj[o,0,i,0]
+            p_y = obs_pred_traj[o,0,i,1]
+            
+            p_x , p_y = rotate((INIT_STATE.position[0],INIT_STATE.position[1]),(p_x,p_y),angle)
+           
+            p_x = p_x - INIT_STATE.position[0]
+            #if dyn_obst.obstacle_type == ObstacleType.TRUCK:
+            #    p_x -= (dyn_obst.obstacle_shape.length - 5.5)
+            p_y = p_y + SHIFT_IN_FFSTREAM_Y -INIT_STATE.position[1]
+
+            obs_pred_traj[o,0,i,0] = p_x
+            obs_pred_traj[o,0,i,1] = p_y
+        
+    return obs_pred_traj
