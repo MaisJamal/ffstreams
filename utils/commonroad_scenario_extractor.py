@@ -24,7 +24,7 @@ from commonroad.geometry.shape import Rectangle
 
 from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import create_collision_checker, create_collision_object
 from commonroad.prediction.prediction import TrajectoryPrediction, SetBasedPrediction
-
+from commonroad.scenario.state import State,InitialState
 
 SHIFT_IN_FFSTREAM_Y = 48.25
 SCENARIO_ROTATION_DEGREES = 0
@@ -76,7 +76,12 @@ def GetRotationAndLaneWidth(scenario):
     print(scenario.lanelet_network.lanelets[0].left_vertices[0][1])
     print(scenario.lanelet_network.lanelets[0].right_vertices[0][1])
     print("raw width ",(scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1]))
-    lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
+    # lane_width = abs( (scenario.lanelet_network.lanelets[0].left_vertices[0][1]-scenario.lanelet_network.lanelets[0].right_vertices[0][1])* math.cos(theta_rad))
+    # get lane width
+    current_lane = scenario.lanelet_network.lanelets[0]
+    p = [current_lane.left_vertices[0][0],current_lane.left_vertices[0][1]]
+    q = [current_lane.right_vertices[0][0],current_lane.right_vertices[0][1]]
+    lane_width = math.dist(p, q)
     if lane_width < 2.5 :
         lane_width = 3.5
     return theta,lane_width
@@ -110,7 +115,7 @@ def extract_data(file_path):
     theta, lane_width = GetRotationAndLaneWidth(scenario)  #theta in degrees
     #spetial case with one scenario
     if file_path == "ffstreams/scenarios/commonroad/keep_lane_scenarios/USA_US101-22_3_T-1.xml":
-        theta -= 1.0
+        theta -= 2.5
     #####
     SCENARIO_ROTATION_DEGREES = theta
 
@@ -138,7 +143,10 @@ def extract_data(file_path):
         #obstacles.append((obs_pos[0],obs_pos[1],obs_orien,obs_vel))
         init_obstacles.append(((obs_pos[0], obs_pos[1]), (5.5, 2.5), (obs_vel, 0)))
         traj = []
-        for i in range(1,total_time_steps):
+        total_steps = dyn_obst.prediction.final_time_step
+        if total_steps > total_time_steps:
+            total_time_steps = total_steps
+        for i in range(1,total_steps):
             if dyn_obst.state_at_time(i) == None:
                 total_time_steps = i
                 break
@@ -175,12 +183,12 @@ def extract_data(file_path):
     ego_y_ff = SHIFT_IN_FFSTREAM_Y#INIT_STATE.position[1] + SHIFT_IN_FFSTREAM_Y
     
     # plot the planning problem and the scenario for the fifth time step
-    plt.figure(figsize=(25, 10))
-    rnd = MPRenderer()
-    scenario.draw(rnd)#(rnd, draw_params={'time_begin': 5})
-    planning_problem_set.draw(rnd)
-    rnd.render()
-    plt.show()
+    # plt.figure(figsize=(25, 10))
+    # rnd = MPRenderer()
+    # scenario.draw(rnd)#(rnd, draw_params={'time_begin': 5})
+    # planning_problem_set.draw(rnd)
+    # rnd.render()
+    # plt.show()
 
     return ego_x_ff,ego_y_ff,ego_orientation_ff,INIT_STATE.velocity , init_obstacles , theta, lane_width, future_trajectories_obstacles,total_time_steps
 
@@ -412,7 +420,7 @@ def rotate_obstacles_in_scene(obs_pred_traj,num_obstacles,file_path):
     theta, lane_width = GetRotationAndLaneWidth(scenario)  #theta in degrees
     #spetial case with one scenario
     if file_path == "ffstreams/scenarios/commonroad/keep_lane_scenarios/USA_US101-22_3_T-1.xml":
-        theta -= 1.0
+        theta -= 2.5
     #####
     SCENARIO_ROTATION_DEGREES = theta
 
@@ -434,3 +442,135 @@ def rotate_obstacles_in_scene(obs_pred_traj,num_obstacles,file_path):
             obs_pred_traj[o,0,i,1] = p_y
         
     return obs_pred_traj
+
+
+
+def extract_map_features(scene_path,goal_position):
+    scenario, planning_problem_set = CommonRoadFileReader(scene_path).open()
+    planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
+    lanelets = scenario.lanelet_network.lanelets
+    INIT_STATE = planning_problem.initial_state
+    x_init = INIT_STATE.position[0]
+    y_init = INIT_STATE.position[1]
+    v_init = INIT_STATE.velocity
+    q_init = [x_init,y_init,v_init]
+    GOAL_STATE = InitialState(position = goal_position)
+    GOAL_STATE.position[0] = goal_position[0]
+    GOAL_STATE.position[1] = goal_position[1]
+    reference_ids = []
+    reference_wx = []
+    reference_wy = []
+
+
+    current_id = scenario.lanelet_network.find_most_likely_lanelet_by_state([INIT_STATE])[0]
+    current_lane = scenario.lanelet_network.find_lanelet_by_id(current_id)
+    goal_lane_id = scenario.lanelet_network.find_most_likely_lanelet_by_state([GOAL_STATE])[0]
+    reference_ids.append(current_id)
+    successor_list = current_lane.successor
+    successor_lanes = []
+    for i in successor_list:
+        successor = scenario.lanelet_network.find_lanelet_by_id(i)
+        successor_lanes.append(successor)
+        if i == goal_lane_id:
+            reference_ids.append(i)
+        elif goal_lane_id in successor.successor:
+            reference_ids.append(i)
+            reference_ids.append(goal_lane_id)
+    
+    for id in reference_ids:
+        lane = scenario.lanelet_network.find_lanelet_by_id(id)
+        for i in range(len(lane.center_vertices)-1):
+            reference_wx.append(lane.center_vertices[i][0])
+            reference_wy.append(lane.center_vertices[i][1])
+        # append last point in last lane
+        if id == reference_ids[-1]:
+            reference_wx.append(lane.center_vertices[-1][0])
+            reference_wy.append(lane.center_vertices[-1][1])
+
+
+    # get lane width
+    p = [current_lane.left_vertices[0][0],current_lane.left_vertices[0][1]]
+    q = [current_lane.right_vertices[0][0],current_lane.right_vertices[0][1]]
+    lane_width = math.dist(p, q)
+
+    #leave only two obstacles
+    scenario.remove_obstacle(scenario.dynamic_obstacles[0])
+    scenario.remove_obstacle(scenario.dynamic_obstacles[1])
+    scenario.remove_obstacle(scenario.dynamic_obstacles[1])
+    scenario.remove_obstacle(scenario.dynamic_obstacles[0])
+    ####
+
+    #### try to add obstacle
+    # example_obs = scenario.dynamic_obstacles[0]
+    # id = 4
+    # type = ObstacleType.CAR
+    # shape = example_obs.obstacle_shape
+    # init_state = InitialState(position = [0,0])
+    # init_state.time_step = 0
+    # init_state.orientation = 1.4273
+    # new_obs = DynamicObstacle(obstacle_id = id,obstacle_type = type,obstacle_shape=shape,initial_state=init_state)
+
+    # scenario.add_objects(new_obs)
+    ####################
+    
+
+    # plot the planning problem and the scenario for the fifth time step
+    plt.figure(figsize=(25, 10))
+    rnd = MPRenderer()
+    rnd.draw_params.time_begin = 0
+    scenario.draw(rnd)
+    #planning_problem_set.draw(rnd)
+    rnd.render()
+    plt.plot(x_init,y_init,'ro',zorder = 20) 
+    plt.plot(goal_position[0],goal_position[1],'ro',zorder = 20) 
+    plt.plot(reference_wx,reference_wy,'go',zorder = 20) 
+    plt.show()
+    # end plot
+
+    return reference_wx,reference_wy , lane_width , q_init,scenario
+
+
+
+
+def plot_pred(scenario,ego_state,all_pred,all_prob,wx,wy,time_step,ego_traj,trajectories2):
+
+    x_init = ego_state.x
+    y_init = ego_state.y
+    
+    ## plot the planning problem and the scenario for the fifth time step
+    plt.figure(figsize=(25, 10))
+    rnd = MPRenderer()
+    rnd.draw_params.time_begin = time_step
+    scenario.draw(rnd)
+    #planning_problem_set.draw(rnd)
+    rnd.render()
+    plt.plot(x_init,y_init,'ro',zorder = 20) 
+    plt.plot(wx,wy,'g-',zorder = 20) 
+    #plot predicted trajectories
+    for i in range(all_pred.shape[0]):
+        for k in range(all_pred.shape[1]):
+            obs_x = all_pred[i,k,:,0] 
+            obs_y = all_pred[i,k,:,1] 
+            plt.plot(obs_x,obs_y,'-',c='turquoise',zorder = 20) 
+        # plot predicted trajectory with highest probability
+        highest_probability_idx = np.argmax(all_prob[i])
+        obs_x = all_pred[i,highest_probability_idx,:,0]
+        obs_y = all_pred[i,highest_probability_idx,:,1] 
+        plt.plot(obs_x,obs_y,'b-',zorder = 20) 
+        # plot predicted trajectory with second highest probability
+        second_high_prob_idx = np.argsort(all_prob[i])[-2]
+        obs_x = all_pred[i,second_high_prob_idx,:,0]
+        obs_y = all_pred[i,second_high_prob_idx,:,1] 
+        plt.plot(obs_x,obs_y,'-',c='dodgerblue',zorder = 20) 
+    plt.plot(ego_traj.x,ego_traj.y,'r-',zorder = 21) 
+    if len(trajectories2) > 0:
+        ego_traj2 = trajectories2[0]
+        plt.plot(ego_traj2.x,ego_traj2.y,'y:',zorder = 21) 
+
+    #plt.show()
+    filename =  f'{time_step}.png'
+    plt.savefig(filename)
+
+    ## end plot
+
+    

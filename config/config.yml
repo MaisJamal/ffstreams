@@ -1,3 +1,25 @@
+general:
+  path: "ffstreams/auto_driving/general/"
+  scene_path: "ffstreams/scenarios/commonroad/general/"
+  scenario: "DEU_Nuremberg-39_5_T-1.xml" # intersection 2 lane
+  gif_path: "ffstreams/auto_driving/gifs/general_gifs/"
+  delta_time: 0.2
+  standard_delta : 0.1 # delta time optimizer and scenario
+  const_dv : 2.5
+  #optimizer parameters:
+  max_acc: 4.0
+  max_speed: 11.1 # 40.0 / 3.6  [m/s]
+  max_t : 5.1
+  min_t : 5.0
+  d_t_s : 0.39  # target speed sampling length [m/s]
+  n_s_sample : 2  # sampling number of target speed
+  max_curvature: 2.5 #1.0
+  K_j : 0.1
+  K_t : 0.9 #0.1
+  K_d : 1.0
+  K_lat : 1.0
+  K_lon : 1.0
+
 keep_lane:
   path: "ffstreams/auto_driving/keep_lane/"
   gif_path: "ffstreams/auto_driving/gifs/keep_lane_gifs/"
@@ -13,9 +35,9 @@ commonroad:
 cr_scene:
   #path: "datasets/commonroad/CHN_Tianjin-12_28_T-1.xml"
   #path: "datasets/commonroad/USA_US101-1_1_T-1.xml"     #change_scenario
-  #path: "datasets/commonroad/DEU_Nuremberg-39_5_T-1.xml"  
-  path: "datasets/commonroad/USA_US101-22_3_T-1.xml"
-  #path: "datasets/commonroad/DEU_Nuremberg-35_1_T-1.xml"
+  path: "datasets/commonroad/DEU_Nuremberg-39_5_T-1.xml" # intersection 2 lane  
+  #path: "datasets/commonroad/USA_US101-22_3_T-1.xml"   # highway
+  #path: "datasets/commonroad/DEU_Nuremberg-35_1_T-1.xml" # intersection no traffic light 1 lane
   #path: "datasets/commonroad/ITA_Empoli-18_1_T-1.xml" # only 4 seconds
 
 apollo:

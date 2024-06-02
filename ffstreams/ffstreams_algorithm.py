@@ -1,16 +1,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.viewer import get_rect
+from ffstreams.utils.viewer import get_rect
 import matplotlib.patches as mpatches
 import os
 import subprocess
 import re
 
-from auto_driving.apollo.apollo_streams import get_yield, get_follow_speed
-import utils.apollo_config as cfg
-from utils.apollo_utils import extract_front_obstacle
+from ffstreams.auto_driving.apollo.apollo_streams import get_yield, get_follow_speed
+from ffstreams.auto_driving.general.general_streams import get_yield_general, get_follow_speed_general
 
-from utils.translator import translate_to_pddl_apollo
+import ffstreams.utils.apollo_config as cfg
+from ffstreams.utils.apollo_utils import extract_front_obstacle
+
+from ffstreams.utils.translator import translate_to_pddl_apollo,translate_to_pddl_cr
+
+from ffstreams.ffstreams.frenet_optimizer_general import generate_target_course
+
+import yaml
+with open('ffstreams/config/config.yml', 'r') as file:
+    config = yaml.safe_load(file)
+config = config['general']
+
 
 ARRAY = np.array
 
@@ -161,3 +171,103 @@ def extract_plan(string):
     
 
     return q_from,q_to
+
+
+
+def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
+    goal_left = False
+    max_speed = config['max_speed']
+    const_dv = config['const_dv']
+    file_path = config['path']
+    problem_file = "problem.pddl"
+    q0 = ARRAY([ego_state.x,ego_state.y,ego_state.ds])
+    acc0 = ego_state.dds
+    curr_dl = ego_state.dl
+    curr_ddl = ego_state.ddl
+    
+    # for connectivity graph
+    confs = []
+    conf_num = 1
+    traj_dict = {} 
+    traj_array = np.full((10,10), False, dtype=bool) # for connectivity graph
+    traj_type = {} # for connectivity graph
+    confs.append(q0)
+
+    trajectories = []
+    # call available applicable streams
+    
+    target_speed =min(max_speed,q0[2]+const_dv)
+    print(" follow target speed : ",target_speed)
+    follow_output = next(get_follow_speed_general(ego_state,target_speed,wx,wy))
+    if follow_output is not None:
+        q = ARRAY([follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].s_d[-1]])
+        confs.append(q)
+        traj_dict[(0,conf_num)] = follow_output[0]
+        traj_array[0][conf_num] = True
+        traj_type[(0,conf_num)] = "FOLLOW"
+        conf_num +=1
+    # front_obs_idx = extract_front_obstacle(obstacles,q0)   
+    front_obs_idx = 0 
+    yield_output = next(get_yield_general(ego_state,obstacles[front_obs_idx],wx,wy)) #TODO add condition of existing front obstacle
+    if yield_output is not None:
+        q = ARRAY([yield_output[0].x[-1],yield_output[0].y[-1],yield_output[0].s_d[-1]])
+        confs.append(q)
+        traj_dict[(0,conf_num)] = yield_output[0]
+        traj_array[0][conf_num] = True
+        traj_type[(0,conf_num)] = "YIELD"
+        conf_num +=1
+
+    # plot_candidate_trajectories_general(follow_output,yield_output,ego_state,obstacles,wx,wy)
+
+    # """ # debug
+    # print("Connectivity array between configurations:")
+    # print(traj_array)
+    # for i in range(len(confs)):
+    #     print("q",i,":",confs[i])
+    # """
+    there_is_front_obs = False
+    translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file,obs_pred_traj)
+    planner_path = os.getcwd() + "/ffstreams/ffplanner/ff"
+    pddl_path = os.getcwd() + "/"+config['path']
+    planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "general_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
+
+    planner_output = str(planner_output)  
+    q_from ,q_to = extract_plan(planner_output) 
+    # #ss3 = time.time()
+    final_traj_type = "NONE"
+    for i in range(len(q_from)):    
+    #     if confs[q_to[i]][1] == cfg.wy_middle_lane_center[0] :
+    #         overtake = True
+        trajectories.append(traj_dict[(q_from[i],q_to[i])])
+        final_traj_type = traj_type[(q_from[i],q_to[i])]
+
+    return trajectories,confs,traj_dict,final_traj_type
+
+
+
+def plot_candidate_trajectories_general(follow_output,yield_output,ego_state,obstacles,wx,wy):
+    show_output = True # important2
+    if show_output:
+        plt.cla()
+        # for stopping simulation with the esc key.
+        plt.gcf().canvas.mpl_connect(
+            'key_release_event',
+            lambda event: [exit(0) if event.key == 'escape' else None])
+        tx, ty, tyaw, tc, csp = generate_target_course(wx, wy)
+
+        plt.plot(tx, ty,"y--")
+
+        # for obs in obstacles:  #plot obstacles
+        #     rect = get_rect((obs.s,obs.l),obs.shape) # in the form [(left,bottom),x_extend,y_extend]
+        #     rect_patch=mpatches.Rectangle(rect[0], rect[1], rect[2])#((31,15),14,7, fill = False,color = "purple",linewidth = 2)
+        #     plt.gca().add_patch(rect_patch)
+        if follow_output is not None:
+            plt.plot(follow_output[0].x[0:], follow_output[0].y[0:], "-g")
+            plt.plot(follow_output[0].x[0],follow_output[0].y[0], "vc")
+        if yield_output is not None:
+            plt.plot(yield_output[0].x[0:], yield_output[0].y[0:], "-r")
+            plt.plot(yield_output[0].x[0],yield_output[0].y[0], "vc")
+        # plt.xlim(0, 100)
+        # plt.ylim(-5,5)
+        plt.grid(True)
+        plt.pause(0.1)
