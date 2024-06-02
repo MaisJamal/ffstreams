@@ -28,7 +28,7 @@ import time
 
 from numpy.lib.nanfunctions import _nanpercentile_dispatcher
 
-import utils.apollo_config as cfg
+import ffstreams.utils.apollo_config as cfg
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../QuinticPolynomialsPlanner/")
@@ -36,8 +36,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../CubicSpline/")
 
 try:
-    from ffstreams.quintic_polynomials_planner import QuinticPolynomial
-    import ffstreams.cubic_spline_planner
+    from ffstreams.ffstreams.quintic_polynomials_planner import QuinticPolynomial
+    import ffstreams.ffstreams.cubic_spline_planner
 except ImportError:
     raise
 

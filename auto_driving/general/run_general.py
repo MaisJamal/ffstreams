@@ -1,7 +1,6 @@
 import numpy as np
 #import time
 import ffstreams.utils.commonroad_scenario_extractor as cr_extractor
-from ffstreams.utils.common import generate_target_course
 import ffstreams.ffstreams.frenet_optimal_trajectory_general as opt
 from ffstreams.ffstreams.ffstreams_algorithm import solve_ffstreams_general
 from ffstreams.utils.apollo_utils import ObstacleState,EgoState

@@ -1,8 +1,8 @@
 from imaplib import Time2Internaldate
 import numpy as np
 
-import utils.apollo_config as cfg
-from ffstreams.frenet_optimizer_apollo import get_traj_yield, get_traj_follow_speed
+import ffstreams.utils.apollo_config as cfg
+from ffstreams.ffstreams.frenet_optimizer_apollo import get_traj_yield, get_traj_follow_speed
 
 ARRAY = np.array
 
