@@ -66,10 +66,11 @@ def main():
     #get reference lane and set initial state
     wx,wy,lane_width,q0,scenario = cr_extractor.extract_map_features(scene_path,goal_position)
     ego_state = EgoState()
-    ego_state.x = q0[0]
-    ego_state.y = q0[1]
-    ego_state.v = q0[2]
-    ego_state.ds = q0[2]
+    ego_state.x = q0[0]#360.8#q0[0]
+    ego_state.y = q0[1]#-22.35#q0[1]
+    ego_state.v =q0[2]# 3.6#q0[2]
+    ego_state.ds = q0[2]#3.6 # q0[2]
+    ego_state.yaw = 1.57
     # ego_state.yaw = 0
     # curr_dl = 0
     # curr_ddl = 0
@@ -91,12 +92,14 @@ def main():
         if len(trajectories) < 1:
             print("SOMETHING IS WRONG")
             if i > 50 :
-                trajectories2,confs,traj_dict,final_traj_type = solve_ffstreams_general(ego_state,obstacles,obs_pred_traj_sec,wx,wy,lane_width)
+                # trajectories2,confs,traj_dict,final_traj_type = solve_ffstreams_general(ego_state,obstacles,obs_pred_traj_sec,wx,wy,lane_width)
+                trajectories2 = None
                 cr_extractor.plot_pred(scenario,ego_state,all_pred_traj,all_prob,wx,wy,i,ego_traj = None,trajectories2=trajectories2)
         
         else: 
             if i > 50 :
-                trajectories2,confs,traj_dict,final_traj_type = solve_ffstreams_general(ego_state,obstacles,obs_pred_traj_sec,wx,wy,lane_width)
+                # trajectories2,confs,traj_dict,final_traj_type = solve_ffstreams_general(ego_state,obstacles,obs_pred_traj_sec,wx,wy,lane_width)
+                trajectories2 = None
                 cr_extractor.plot_pred(scenario,ego_state,all_pred_traj,all_prob,wx,wy,i, ego_traj = trajectories[0],trajectories2=trajectories2)
         
             new_ego_state = EgoState()
@@ -106,7 +109,7 @@ def main():
             # new_obs = []
             # for obs in future_trajectories_obstacles:
             #     new_obs.append(((obs[i][0], obs[i][1]), (5.5, 2.5), (obs[i][2], 0)))
-            
+            new_ego_state.yaw = trajectories[0].yaw[1]
             new_ego_state.x = trajectories[0].x[1]
             new_ego_state.y = trajectories[0].y[1]
             new_ego_state.s = trajectories[0].s[1]

@@ -736,12 +736,68 @@ def get_traj_change_lane(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,target_spee
             return False,None
     return False,None
 
+def get_traj_stop_general(ego_state,target_speed,time_to_stop,wx,wy):
+    #x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,
+    global TARGET_SPEED
+    global TARGET_L
+    global MAX_T
+    global MIN_T
+
+    MIN_T = time_to_stop
+    MAX_T = time_to_stop + 0.1
+    ob = None
+    tx, ty, tyaw, tc, csp = generate_target_course(wx, wy)
+   
+    TARGET_SPEED = target_speed
+
+    TARGET_L = 0
+    
+
+    show_final_traj = False #important
+ 
+    # initial state
+    c_speed = ego_state.ds  # current speed [m/s]
+    c_d = ego_state.l
+    c_d_d = ego_state.dl # current lateral speed [m/s]
+    c_d_dd = ego_state.ddl  # current lateral acceleration [m/s]
+    s0 = ego_state.s  # current course position
+    s_dd = ego_state.dds
+
+    path = frenet_optimal_planning_corrected(
+                csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
+    if path is None:
+        return False,None
+    else:
+        if show_final_traj and len(path.y) > 1:  # pragma: no cover
+            plt.cla()
+            # for stopping simulation with the esc key.
+            plt.gcf().canvas.mpl_connect(
+                'key_release_event',
+                lambda event: [exit(0) if event.key == 'escape' else None])
+            plt.plot(tx, ty,"y--")
+
+            if ob is not None:
+                plt.plot(ob[:, 0], ob[:, 1], "xk")
+            plt.plot(path.x[0:], path.y[0:], "-r")
+            plt.plot(path.x[0], path.y[0], "vc")
+            plt.xlim(0, 800)
+            #plt.ylim(path.y[1] , path.y[1] )
+            plt.title("v[km/h]:" + str(c_speed * 3.6)[0:4])
+            plt.grid(True)
+            plt.pause(0.1)
+        return True, path
+     
+    return False,None
 
 def get_traj_yield_general(ego_state,target_speed,wx,wy):
     #x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,
     global TARGET_SPEED
     global TARGET_L
+    global MAX_T
+    global MIN_T
 
+    MIN_T = 5
+    MAX_T = 5 + 0.1
     ob = None
     tx, ty, tyaw, tc, csp = generate_target_course(wx, wy)
    
@@ -792,7 +848,11 @@ def get_traj_follow_speed_general(ego_state,target_speed,wx,wy):
     global MAX_ACCEL
     global TARGET_SPEED
     global TARGET_L
+    global MAX_T
+    global MIN_T
 
+    MIN_T = 5
+    MAX_T = 5 + 0.1
 
     ob = None 
     tx, ty, tyaw, tc, csp = generate_target_course(wx, wy)

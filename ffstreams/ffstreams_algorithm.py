@@ -7,7 +7,7 @@ import subprocess
 import re
 
 from ffstreams.auto_driving.apollo.apollo_streams import get_yield, get_follow_speed
-from ffstreams.auto_driving.general.general_streams import get_yield_general, get_follow_speed_general
+from ffstreams.auto_driving.general.general_streams import get_stop_general,get_yield_general, get_follow_speed_general
 
 import ffstreams.utils.apollo_config as cfg
 from ffstreams.utils.apollo_utils import extract_front_obstacle
@@ -150,6 +150,9 @@ def extract_plan(string):
 
     if not idx:
         idx = [m.start() for m in re.finditer('OVERTAKE', string)]
+    
+    if not idx:
+        idx = [m.start() for m in re.finditer('STOP', string)]
 
     for i in idx:
         k = string[i:]
@@ -217,7 +220,16 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
         traj_type[(0,conf_num)] = "YIELD"
         conf_num +=1
 
-    # plot_candidate_trajectories_general(follow_output,yield_output,ego_state,obstacles,wx,wy)
+    stop_output = next(get_stop_general(ego_state,wx,wy)) #TODO add condition of existing front obstacle
+    # stop_output = None
+    if stop_output is not None:
+        q = ARRAY([stop_output[0].x[-1],stop_output[0].y[-1],stop_output[0].s_d[-1]])
+        confs.append(q)
+        traj_dict[(0,conf_num)] = stop_output[0]
+        traj_array[0][conf_num] = True
+        traj_type[(0,conf_num)] = "STOP"
+        conf_num +=1
+    # plot_candidate_trajectories_general(follow_output,yield_output,stop_output,ego_state,obstacles,wx,wy)
 
     # """ # debug
     # print("Connectivity array between configurations:")
@@ -245,7 +257,7 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
 
 
 
-def plot_candidate_trajectories_general(follow_output,yield_output,ego_state,obstacles,wx,wy):
+def plot_candidate_trajectories_general(follow_output,yield_output,stop_output,ego_state,obstacles,wx,wy):
     show_output = True # important2
     if show_output:
         plt.cla()
@@ -267,6 +279,10 @@ def plot_candidate_trajectories_general(follow_output,yield_output,ego_state,obs
         if yield_output is not None:
             plt.plot(yield_output[0].x[0:], yield_output[0].y[0:], "-r")
             plt.plot(yield_output[0].x[0],yield_output[0].y[0], "vc")
+        if stop_output is not None:
+            plt.plot(stop_output[0].x[0:], stop_output[0].y[0:], "-b")
+            plt.plot(stop_output[0].x[0],stop_output[0].y[0], "vc")
+        
         # plt.xlim(0, 100)
         # plt.ylim(-5,5)
         plt.grid(True)
