@@ -5,6 +5,10 @@
 import matplotlib.pyplot as plt
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
+from commonroad.scenario.trajectory import State as StTraj
+from ffstreams.utils.common import get_heading
+from matplotlib.patches import Rectangle as plt_rect
+
 import math
 import copy
 import os
@@ -514,21 +518,88 @@ def extract_map_features(scene_path,goal_position):
     ####################
     
 
-    # plot the planning problem and the scenario for the fifth time step
+    # # plot the planning problem and the scenario for the fifth time step
+    # plt.figure(figsize=(25, 10))
+    # rnd = MPRenderer()
+    # rnd.draw_params.time_begin = 0
+    # scenario.draw(rnd)
+    # #planning_problem_set.draw(rnd)
+    # rnd.render()
+    # rect = plt_rect(xy=(x_init-2.5, y_init-1.0), width=5.0, height=2.0, angle=90, rotation_point='center', color='green',zorder = 20)
+    # ax = plt.gca()
+    # ax.add_patch(rect)
+    # plt.plot(x_init,y_init,'ro',zorder = 20) 
+    # plt.plot(goal_position[0],goal_position[1],'ro',zorder = 20) 
+    # plt.plot(reference_wx,reference_wy,'go',zorder = 20) 
+    # plt.show()
+    # # end plot
+
+    # create a trajectory for the ego vehicle starting at time step 0
+    position = [[2.5, 0.0], [4.5, 0.0], [6.5, 0.0], [8.5, 0.0], [10.5, 0.0], [12.5, 0.0], [14.5, 0.0]]
+    state_list = list()
+    for k in range(0, len(position)):
+        state_list.append(InitialState(time_step= k,position = position[k], orientation = 1.5))
+    trajectory = Trajectory(0, state_list)
+
+    # create the shape of the ego vehicle
+    shape = Rectangle(length=4.5, width=2.0)
+    # create a TrajectoryPrediction object consisting of the trajectory and the shape of the ego vehicle
+    traj_pred = TrajectoryPrediction(trajectory=trajectory, shape=shape)
+    # params = {'minkowski_sum_circle': False,
+    #           'minkowski_sum_circle_radius': 1.0,
+    #           'resolution': 16,'color':'green'}
+    co = create_collision_object(traj_pred)
+    cc = create_collision_checker(scenario)
+    co2 = create_collision_object(traj_pred)
+    print('Collision between the trajectory of the ego vehicle and objects in the environment: ', cc.collide(co))
+    print('Collision : ', co2.collide(co))
+
     plt.figure(figsize=(25, 10))
     rnd = MPRenderer()
-    rnd.draw_params.time_begin = 0
-    scenario.draw(rnd)
-    #planning_problem_set.draw(rnd)
+    scenario.lanelet_network.draw(rnd)
+    cc.draw(rnd)
+    # co.params['color'] = 'green'   
+    co.draw(rnd)
     rnd.render()
-    plt.plot(x_init,y_init,'ro',zorder = 20) 
-    plt.plot(goal_position[0],goal_position[1],'ro',zorder = 20) 
-    plt.plot(reference_wx,reference_wy,'go',zorder = 20) 
     plt.show()
-    # end plot
 
     return reference_wx,reference_wy , lane_width , q_init,scenario
 
+def collision_check(ego_traj,obs_traj):
+    # ego trajectory (50 length)
+    state_list_obj1 = list()
+    for k in range(len(ego_traj.t)):
+        state_list_obj1.append(InitialState(time_step= k,position = [ego_traj.x[k],ego_traj.y[k]], orientation = ego_traj.yaw[k]))
+    trajectory_obj1 = Trajectory(0, state_list_obj1)
+
+    # create the shape of the ego vehicle and obstacles
+    shape = Rectangle(length=5.0, width=2.0)
+    # create a TrajectoryPrediction object consisting of the trajectory and the shape of the ego vehicle
+    traj_pred_obj1 = TrajectoryPrediction(trajectory=trajectory_obj1, shape=shape)
+
+    co = create_collision_object(traj_pred_obj1)
+    # obstacle traj (60,2)
+    state_list_obj2 = list()
+    for k in range(0, len(ego_traj.t)):
+        yaw = get_heading(obs_traj[k*2,0],obs_traj[k*2,1],obs_traj[k*2+2,0],obs_traj[k*2+2,1])
+        state_list_obj2.append(InitialState(time_step= k,position = [obs_traj[k*2,0],obs_traj[k*2,1]], orientation = yaw))
+    trajectory_obj2 = Trajectory(0, state_list_obj2)
+
+    # create a TrajectoryPrediction object consisting of the trajectory and the shape of the ego vehicle
+    traj_pred_obj2 = TrajectoryPrediction(trajectory=trajectory_obj2, shape=shape)
+
+    co2 = create_collision_object(traj_pred_obj2)
+
+    #debug
+    # plt.figure(figsize=(25, 10))
+    # rnd = MPRenderer()
+    # # scenario.lanelet_network.draw(rnd)
+    # co.draw(rnd)
+    # # co.params['color'] = 'green'   
+    # co2.draw(rnd)
+    # rnd.render()
+    # plt.show()
+    return co2.collide(co)
 
 
 
@@ -536,7 +607,9 @@ def plot_pred(scenario,ego_state,all_pred,all_prob,wx,wy,time_step,ego_traj,traj
 
     x_init = ego_state.x
     y_init = ego_state.y
-    
+    heading_deg = math.degrees(ego_state.yaw)
+    ego_width = 5.0
+    ego_height = 2.0
     ## plot the planning problem and the scenario for the fifth time step
     plt.figure(figsize=(25, 10))
     rnd = MPRenderer()
@@ -544,6 +617,9 @@ def plot_pred(scenario,ego_state,all_pred,all_prob,wx,wy,time_step,ego_traj,traj
     scenario.draw(rnd)
     #planning_problem_set.draw(rnd)
     rnd.render()
+    rect = plt_rect(xy=(x_init-ego_width/2, y_init-ego_height/2), width=ego_width, height=ego_height, angle=heading_deg, rotation_point='center', color='green',zorder = 20)
+    ax = plt.gca()
+    ax.add_patch(rect)
     plt.plot(x_init,y_init,'ro',zorder = 20) 
     plt.plot(wx,wy,'g-',zorder = 20) 
     #plot predicted trajectories
@@ -563,7 +639,7 @@ def plot_pred(scenario,ego_state,all_pred,all_prob,wx,wy,time_step,ego_traj,traj
         obs_y = all_pred[i,second_high_prob_idx,:,1] 
         plt.plot(obs_x,obs_y,'-',c='dodgerblue',zorder = 20) 
     plt.plot(ego_traj.x,ego_traj.y,'r-',zorder = 21) 
-    if len(trajectories2) > 0:
+    if trajectories2 is not None:
         ego_traj2 = trajectories2[0]
         plt.plot(ego_traj2.x,ego_traj2.y,'y:',zorder = 21) 
 

@@ -7,7 +7,8 @@ from ffstreams.ffstreams.frenet_optimizer import FrenetPath,get_traj
 import random
 from numpy.linalg import norm
 import time
-
+from ffstreams.utils.common import get_limit_coord_obs,get_heading
+from ffstreams.utils.commonroad_scenario_extractor import collision_check
 ARRAY = np.array 
 
 
@@ -478,6 +479,8 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
     #all_y=[stg.wy_middle_lower_lane[0],stg.wy_middle_upper_lane[0]]
     total_time = 10 #seconds
     delta_t = 0.2  # should be even
+    obs_width = 5
+    obs_height = 2
     #confs = []
     #q0 = ARRAY([0,all_y[0], INIT_SPEED])### x , y , speed , t =0
     #confs.append(q0)
@@ -552,8 +555,17 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
                     f.write("\t\t(right_traj q%d q%d)\n\n"  % (i,j))
                 elif tj_type == "OVERTAKE":
                     f.write("\t\t(overtake_traj q%d q%d)\n\n"  % (i,j))
+                elif tj_type == "STOP":
+                    f.write("\t\t(stop_traj q%d q%d)\n\n"  % (i,j))
+
+                for idx in range(len(obstacles)):
+                    if not collision_check(traj_dict[(i,j)],obs_traj[idx,0,:,:]):
+                        f.write("\t\t(checked_traj q%d q%d obs%d)\n\n"  % (i,j,idx))
+
 
                 f.write("\t\t(next q%d q%d_%d_1 q%d)\n" % (i,i,j,j))
+
+                # print(collision_check(traj_dict[(i,j)],obs_traj[0,0,:,:]))
 
                 for k in range(1,len(cut_traj_dict[(i,j)].x)):
                     f.write("\t\t(= (at_x q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].x[k]))
@@ -562,12 +574,12 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
                     
                     if len(obstacles):
                         for idx in range(len(obstacles)):
-                            
+                
                             obs_x = obs_traj[idx,0,k*2,0]
                             obs_y = obs_traj[idx,0,k*2,1]
                             f.write("\t\t(= (obst_at_x obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_x))
                             f.write("\t\t(= (obst_at_y obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_y))
-                    
+
                     
                     if k != (len(cut_traj_dict[(i,j)].x)-1):
                         f.write("\t\t(next q%d_%d_%d q%d_%d_%d q%d)\n\n" % (i,j,k,i,j,k+1,j))
