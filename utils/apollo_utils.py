@@ -8,9 +8,11 @@ class EgoState:
         self.l = 0
         self.dl = 0
         self.ddl = 0
+        self.dddl = 0
         self.s = 0
         self.ds = 0
         self.dds = 0
+        self.ddds = 0
 
         self.x = 0
         self.y = 0
@@ -31,6 +33,7 @@ class ObstacleState:
         self.y = 0
         self.yaw = 0
         self.v = 0
+        self.a = 0
         self.shape = (5.5, 2.5)
     def __str__(self):
         return f"Obstacle: s {self.s}, l {self.l}, x {self.x}, y {self.y}, v {self.v}"

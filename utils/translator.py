@@ -563,27 +563,27 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
                         f.write("\t\t(checked_traj q%d q%d obs%d)\n\n"  % (i,j,idx))
 
 
-                f.write("\t\t(next q%d q%d_%d_1 q%d)\n" % (i,i,j,j))
+                # f.write("\t\t(next q%d q%d_%d_1 q%d)\n" % (i,i,j,j))
 
-                # print(collision_check(traj_dict[(i,j)],obs_traj[0,0,:,:]))
+                # # print(collision_check(traj_dict[(i,j)],obs_traj[0,0,:,:]))
 
-                for k in range(1,len(cut_traj_dict[(i,j)].x)):
-                    f.write("\t\t(= (at_x q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].x[k]))
-                    f.write("\t\t(= (at_y q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].y[k]))
-                    f.write("\t\t(= (at_time q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].t[k]))
+                # for k in range(1,len(cut_traj_dict[(i,j)].x)):
+                #     f.write("\t\t(= (at_x q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].x[k]))
+                #     f.write("\t\t(= (at_y q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].y[k]))
+                #     f.write("\t\t(= (at_time q%d_%d_%d) %.2f )\n" % (i,j,k,cut_traj_dict[(i,j)].t[k]))
                     
-                    if len(obstacles):
-                        for idx in range(len(obstacles)):
+                #     if len(obstacles):
+                #         for idx in range(len(obstacles)):
                 
-                            obs_x = obs_traj[idx,0,k*2,0]
-                            obs_y = obs_traj[idx,0,k*2,1]
-                            f.write("\t\t(= (obst_at_x obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_x))
-                            f.write("\t\t(= (obst_at_y obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_y))
+                #             obs_x = obs_traj[idx,0,k*2,0]
+                #             obs_y = obs_traj[idx,0,k*2,1]
+                #             f.write("\t\t(= (obst_at_x obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_x))
+                #             f.write("\t\t(= (obst_at_y obs%d q%d_%d_%d) %.2f )\n" % (idx,i,j,k,obs_y))
 
                     
-                    if k != (len(cut_traj_dict[(i,j)].x)-1):
-                        f.write("\t\t(next q%d_%d_%d q%d_%d_%d q%d)\n\n" % (i,j,k,i,j,k+1,j))
-                f.write("\t\t(next q%d_%d_%d q%d q%d)\n" % (i,j,len(cut_traj_dict[(i,j)].x)-1,j,j))
+                #     if k != (len(cut_traj_dict[(i,j)].x)-1):
+                #         f.write("\t\t(next q%d_%d_%d q%d_%d_%d q%d)\n\n" % (i,j,k,i,j,k+1,j))
+                # f.write("\t\t(next q%d_%d_%d q%d q%d)\n" % (i,j,len(cut_traj_dict[(i,j)].x)-1,j,j))
                 f.write("\n\t\t(= (time_of_traj q%d q%d ) %.2f)\n" % (i,j,cut_traj_dict[(i,j)].t[-1]+ delta_t))
                 f.write("\n\n")
                 if j!= (len(confs)-1):

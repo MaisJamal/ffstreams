@@ -8,7 +8,7 @@
         (next ?q1 ?q2 ?q_end - conf) (traj ?q1 ?q2 - conf) (idle)(is_first ?q - conf ?o - obstacles) (is_last ?q - conf ?o - obstacles)(ego_at ?q - conf)
         (checking_traj ?q1 ?q2 - conf ?o - obstacles)(checked_traj ?q1 ?q2 - conf ?o - obstacles) (moved_forward)
         (there_is_front_obs)(on_init_lane)(on_second_lane)(yield_traj ?q1 ?q2)(keep_speed_traj ?q1 ?q2)
-        (overtake_traj ?q1 ?q2)(left_traj ?q1 ?q2)(right_traj ?q1 ?q2))
+        (stop_traj ?q1 ?q2)(overtake_traj ?q1 ?q2)(left_traj ?q1 ?q2)(right_traj ?q1 ?q2))
 (:functions (cost)(curr_time) (time_of_traj ?q1 ?q2 - conf)(at_x ?q - conf)(at_y ?q - conf) (at_time ?q - conf)
             (obst_at_x ?o - obstacles ?q - conf)(obst_at_y ?o - obstacles ?q - conf) 
 )
@@ -42,7 +42,7 @@
                     (not (= ?first ?last)) 
                     (= (at_y ?after_first)(obst_at_y ?o ?after_first)) 
                     (>= (at_x ?after_first) (obst_at_x ?o ?after_first) )
-                    (>= (- (at_x ?after_first) (obst_at_x ?o ?after_first)  ) 6.5)
+                    (>= (- (at_x ?after_first) (obst_at_x ?o ?after_first)  ) 3.3)
                 ) 
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -60,7 +60,7 @@
                     (not (= ?first ?last)) 
                     (= (at_y ?after_first)(obst_at_y ?o ?after_first))  
                     (< (at_x ?after_first) (obst_at_x ?o ?after_first) )
-                    (>= (-  (obst_at_x ?o ?after_first) (at_x ?after_first)  ) 6.5) 
+                    (>= (-  (obst_at_x ?o ?after_first) (at_x ?after_first)  ) 3.3) 
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -94,7 +94,7 @@
                      (> (at_y ?after_first)(obst_at_y ?o ?after_first))
                      (< (- (at_y ?after_first) (obst_at_y ?o ?after_first) ) 3.05)  
                      (< (at_x ?after_first) (obst_at_x ?o ?after_first) )
-                     (>= (-  (obst_at_x ?o ?after_first) (at_x ?after_first)  ) 6.5)
+                     (>= (-  (obst_at_x ?o ?after_first) (at_x ?after_first)  ) 3.3)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -112,7 +112,7 @@
                      (> (at_y ?after_first)(obst_at_y ?o ?after_first))
                      (< (- (at_y ?after_first) (obst_at_y ?o ?after_first) ) 3.05)  
                      (>= (at_x ?after_first) (obst_at_x ?o ?after_first) )
-                     (>= (- (at_x ?after_first) (obst_at_x ?o ?after_first)   ) 6.5)
+                     (>= (- (at_x ?after_first) (obst_at_x ?o ?after_first)   ) 3.3)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -147,7 +147,7 @@
                      (< (at_y ?after_first)(obst_at_y ?o ?after_first))  
                      (< (- (obst_at_y ?o ?after_first) (at_y ?after_first) ) 3.05)
                      (>= (at_x ?after_first) (obst_at_x ?o ?after_first) )
-                     (>= (- (at_x ?after_first) (obst_at_x ?o ?after_first)   ) 6.5)
+                     (>= (- (at_x ?after_first) (obst_at_x ?o ?after_first)   ) 3.3)
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -165,7 +165,7 @@
                      (< (at_y ?after_first)(obst_at_y ?o ?after_first))  
                      (< (- (obst_at_y ?o ?after_first) (at_y ?after_first) ) 3.05)
                      (< (at_x ?after_first) (obst_at_x ?o ?after_first) )
-                     (>= (-  (obst_at_x ?o ?after_first) (at_x ?after_first)  ) 6.5)
+                     (>= (-  (obst_at_x ?o ?after_first) (at_x ?after_first)  )3.3 )
                 )
     :effect (and
                 (not (is_first ?first ?o)) ; update is_first
@@ -188,13 +188,34 @@
            )
 )
 
+(:action stop
+    :parameters (?q1 ?q2 - conf)
+    :precondition (and 
+                 (ego_at ?q1)
+                 (traj ?q1 ?q2)
+                 (stop_traj ?q1 ?q2)
+                  (forall (?o - obstacles)
+                    (checked_traj ?q1 ?q2 ?o)
+                 )
+                 (on_init_lane)
+                 (idle)
+               )
+    :effect (and 
+                 (ego_at ?q2)
+                 (not (ego_at ?q1))
+                 (increase (curr_time)  (time_of_traj ?q1 ?q2))
+                 (increase (cost)  20)
+                 (moved_forward)
+                )
+)
+
 (:action keep_speed
     :parameters (?q1 ?q2 - conf)
     :precondition (and 
                  (ego_at ?q1)
                  (traj ?q1 ?q2)
                  (keep_speed_traj ?q1 ?q2)
-                 (forall (?o - obstacles)
+                  (forall (?o - obstacles)
                     (checked_traj ?q1 ?q2 ?o)
                  )
                  (on_init_lane)
