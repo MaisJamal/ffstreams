@@ -474,7 +474,7 @@ def translate_to_pddl_keep_lane(there_is_front_obs,confs,traj_dict,traj_type,tra
 
 
 
-def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_name,problem_file_name,obs_traj):
+def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_name,problem_file_name,obs_traj,dist_to_intersection=None):
     #INIT_SPEED = 20 / 3.6
     #all_y=[stg.wy_middle_lower_lane[0],stg.wy_middle_upper_lane[0]]
     total_time = 10 #seconds
@@ -534,6 +534,9 @@ def translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,
     f.write("\t\t(= (curr_time) 0)\n")
     f.write("\t\t(= (cost) 0)\n")
     f.write("\t\t(on_init_lane)\n")
+    if dist_to_intersection is not None:
+        if 5<dist_to_intersection < 20:
+            f.write("\t\t(before_intersection)\n")
     #overtaking
     if (there_is_front_obs):
         f.write("\t\t(there_is_front_obs)\n")

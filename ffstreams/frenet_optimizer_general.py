@@ -67,6 +67,7 @@ ROBOT_RADIUS = 2.0  # robot radius [m]
 K_J = config['K_j']
 K_T = config['K_t']
 K_D = config['K_d']
+K_S_ERROR = config['K_s_error']
 K_LAT = config['K_lat']
 K_LON = config['K_lon']
 
@@ -181,7 +182,6 @@ def calc_frenet_paths(c_speed, c_d, c_d_d, c_d_dd, s0):
 
             # square of diff from target speed
             ds = (TARGET_SPEED - tfp.s_d[-1]) ** 2
-
             #  tfp.cd = K_J * Jp + K_T * Ti + K_D * tfp.d[-1] ** 2
             tfp.cd = K_J * Jp + K_T * Ti + K_D * (tfp.d[-1]-TARGET_L) ** 2
             tfp.cv = K_J * Js + K_T * Ti + K_D * ds
@@ -789,6 +789,59 @@ def get_traj_stop_general(ego_state,target_speed,time_to_stop,wx,wy):
      
     return False,None
 
+def get_traj_stop_at_intersection(ego_state,target_speed,dist_to_stop,wx,wy):
+    #x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,
+    global TARGET_SPEED
+    global TARGET_L
+    global MAX_T
+    global MIN_T
+
+    MIN_T = 5
+    MAX_T = 5 + 0.1
+    ob = None
+    tx, ty, tyaw, tc, csp = generate_target_course(wx, wy)
+   
+    TARGET_SPEED = target_speed
+
+    TARGET_L = 0
+    
+
+    show_final_traj = False #important
+ 
+    # initial state
+    c_speed = ego_state.ds  # current speed [m/s]
+    c_d = ego_state.l
+    c_d_d = ego_state.dl # current lateral speed [m/s]
+    c_d_dd = ego_state.ddl  # current lateral acceleration [m/s]
+    s0 = ego_state.s  # current course position
+    s_dd = ego_state.dds
+
+    path = frenet_optimal_planning_corrected(
+                csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob,dist_to_stop)
+    if path is None:
+        return False,None
+    else:
+        if show_final_traj and len(path.y) > 1:  # pragma: no cover
+            plt.cla()
+            # for stopping simulation with the esc key.
+            plt.gcf().canvas.mpl_connect(
+                'key_release_event',
+                lambda event: [exit(0) if event.key == 'escape' else None])
+            plt.plot(tx, ty,"y--")
+
+            if ob is not None:
+                plt.plot(ob[:, 0], ob[:, 1], "xk")
+            plt.plot(path.x[0:], path.y[0:], "-r")
+            plt.plot(path.x[0], path.y[0], "vc")
+            plt.xlim(0, 800)
+            #plt.ylim(path.y[1] , path.y[1] )
+            plt.title("v[km/h]:" + str(c_speed * 3.6)[0:4])
+            plt.grid(True)
+            plt.pause(0.1)
+        return True, path
+     
+    return False,None
+
 def get_traj_yield_general(ego_state,target_speed,wx,wy):
     #x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,
     global TARGET_SPEED
@@ -835,6 +888,94 @@ def get_traj_yield_general(ego_state,target_speed,wx,wy):
             plt.plot(path.x[0], path.y[0], "vc")
             plt.xlim(0, 800)
             #plt.ylim(path.y[1] , path.y[1] )
+            plt.title("v[km/h]:" + str(c_speed * 3.6)[0:4])
+            plt.grid(True)
+            plt.pause(0.1)
+        return True, path
+     
+    return False,None
+
+def get_traj_overtake_general(ego_state,target_speed,wx,wy):
+# (x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,target_speed):
+    global MAX_SPEED
+    global MAX_ACCEL
+    global TARGET_SPEED
+    global TARGET_L
+    global MAX_T
+    global MIN_T
+
+    MIN_T = 5
+    MAX_T = 5 + 0.1
+
+    ob = None 
+    tx, ty, tyaw, tc, csp = generate_target_course(wx, wy)
+   
+    TARGET_SPEED = target_speed - 1.25
+    
+    
+    TARGET_L = +3.7
+    
+
+    show_final_traj = True #important
+    
+    # initial state
+    c_speed = ego_state.ds  # current speed [m/s]
+    c_d = ego_state.l
+    c_d_d = ego_state.dl # current lateral speed [m/s]
+    c_d_dd = ego_state.ddl  # current lateral acceleration [m/s]
+    s0 = ego_state.s  # current course position
+    s_dd = ego_state.dds
+
+    path = frenet_optimal_planning_corrected(
+                csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
+    if path is None:
+        return False,None
+    else:
+        MIN_T = 4.8
+        MAX_T = 4.8 + 0.1
+        TARGET_SPEED = target_speed 
+        TARGET_L = 0
+        # initial state
+        c_speed = path.s_d[-1]  # current speed [m/s]
+        c_d = path.d[-1]
+        c_d_d = path.d_d[-1] # current lateral speed [m/s]
+        c_d_dd = path.d_dd[-1]  # current lateral acceleration [m/s]
+        s0 = path.s[-1]  # current course position
+        s_dd = path.s_dd[-1]
+        return_path = frenet_optimal_planning_corrected(
+                csp, s0, c_speed, s_dd, c_d, c_d_d, c_d_dd, ob)
+        if return_path is None:
+            return False,None
+        else:
+            path.d = path.d + return_path.d
+            path.d_d = path.d_d + return_path.d_d
+            path.d_dd = path.d_dd + return_path.d_dd
+            path.d_ddd = path.d_ddd + return_path.d_ddd
+            path.s = path.s + return_path.s
+            path.s_d = path.s_d + return_path.s_d
+            path.s_dd = path.s_dd + return_path.s_dd
+            path.s_ddd = path.s_ddd + return_path.s_ddd
+            path.x = path.x + return_path.x
+            path.y = path.y + return_path.y
+            path.yaw = path.yaw + return_path.yaw
+            new_t = [x+2.6 for x in return_path.t]
+            path.t = path.t + new_t
+  
+
+        if show_final_traj and len(path.y) > 1:  # pragma: no cover
+            plt.cla()
+            # for stopping simulation with the esc key.
+            plt.gcf().canvas.mpl_connect(
+                'key_release_event',
+                lambda event: [exit(0) if event.key == 'escape' else None])
+            plt.plot(tx, ty,"y--")
+           
+            if ob is not None:
+                plt.plot(ob[:, 0], ob[:, 1], "xk")
+            plt.plot(path.x[0:], path.y[0:], "-r")
+            plt.plot(path.x[0], path.y[0], "vc")
+            plt.xlim(0, 800)
+            # plt.ylim(path.y[1] , path.y[1] )
             plt.title("v[km/h]:" + str(c_speed * 3.6)[0:4])
             plt.grid(True)
             plt.pause(0.1)
@@ -979,9 +1120,9 @@ def get_traj_change_lane_overtake(x0,y0,speed0,acc0,curr_dl,curr_ddl,target_y,ta
      
     return False,None
 
-def frenet_optimal_planning_corrected(csp, s0, c_speed , s_dd, c_d, c_d_d, c_d_dd, ob):
+def frenet_optimal_planning_corrected(csp, s0, c_speed , s_dd, c_d, c_d_d, c_d_dd, ob,dist_to_stop= None):
     #start_t = time.time()
-    fplist = calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0)
+    fplist = calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0,dist_to_stop)
     #print("time needed for calc fre paths: ", time.time()-start_t)
 
     #start_t = time.time()
@@ -1002,7 +1143,7 @@ def frenet_optimal_planning_corrected(csp, s0, c_speed , s_dd, c_d, c_d_d, c_d_d
 
     return best_path
 
-def calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0):
+def calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0,dist_to_stop = None):
     frenet_paths = []
     #print("dfa ",min_time,max_time)
     # generate path to each offset goal
@@ -1048,6 +1189,10 @@ def calc_frenet_paths_corrected(c_speed,s_dd, c_d, c_d_d, c_d_dd, s0):
             #  tfp.cd = K_J * Jp + K_T * Ti + K_D * tfp.d[-1] ** 2
             tfp.cd = K_J * Jp + K_T * Ti + K_D * (tfp.d[-1]-TARGET_L) ** 2
             tfp.cv = K_J * Js + K_T * Ti + K_D * ds
+            
+            if dist_to_stop is not None:
+                error_final_s = (dist_to_stop - tfp.s[-1]) ** 2
+                tfp.cv += (K_S_ERROR * error_final_s)
             tfp.cf = K_LAT * tfp.cd + K_LON * tfp.cv
 
             frenet_paths.append(tfp)

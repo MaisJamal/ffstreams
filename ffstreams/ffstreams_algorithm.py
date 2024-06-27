@@ -7,12 +7,13 @@ import subprocess
 import re
 
 from ffstreams.auto_driving.apollo.apollo_streams import get_yield, get_follow_speed
-from ffstreams.auto_driving.general.general_streams import get_stop_general,get_yield_general, get_follow_speed_general
+from ffstreams.auto_driving.general.general_streams import get_overtake_general,get_stop_general,get_yield_general, get_stop_at_intersection,get_follow_speed_general,get_stop_rand_general,get_yield_rand_general, get_follow_rand_general
 
 import ffstreams.utils.apollo_config as cfg
 from ffstreams.utils.apollo_utils import extract_front_obstacle
 
 from ffstreams.utils.translator import translate_to_pddl_apollo,translate_to_pddl_cr
+from ffstreams.ffstreams.frenet_optimizer_cr import FrenetPath
 
 from ffstreams.ffstreams.frenet_optimizer_general import generate_target_course
 
@@ -177,7 +178,7 @@ def extract_plan(string):
 
 
 
-def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
+def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width,extra_candidates = 0,dist_to_intersection = None,intersection = True,overtake_decision=False,overtake_counter=0,overtake_traj = None,overtake_needed=False):
     goal_left = False
     max_speed = config['max_speed']
     const_dv = config['const_dv']
@@ -192,7 +193,7 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
     confs = []
     conf_num = 1
     traj_dict = {} 
-    traj_array = np.full((10,10), False, dtype=bool) # for connectivity graph
+    traj_array = np.full((100,100), False, dtype=bool) # for connectivity graph
     traj_type = {} # for connectivity graph
     confs.append(q0)
 
@@ -203,6 +204,7 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
     print(" follow target speed : ",target_speed)
     follow_output = next(get_follow_speed_general(ego_state,target_speed,wx,wy))
     if follow_output is not None:
+        print("Follow candidate exists")
         q = ARRAY([follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].s_d[-1]])
         confs.append(q)
         traj_dict[(0,conf_num)] = follow_output[0]
@@ -211,8 +213,10 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
         conf_num +=1
     # front_obs_idx = extract_front_obstacle(obstacles,q0)   
     front_obs_idx = 0 
-    yield_output = next(get_yield_general(ego_state,obstacles[front_obs_idx],wx,wy)) #TODO add condition of existing front obstacle
+    target_speed =max(0,q0[2]-(const_dv))
+    yield_output = next(get_yield_general(ego_state,target_speed,wx,wy)) #TODO add condition of existing front obstacle
     if yield_output is not None:
+        print("Yield candidate exists")
         q = ARRAY([yield_output[0].x[-1],yield_output[0].y[-1],yield_output[0].s_d[-1]])
         confs.append(q)
         traj_dict[(0,conf_num)] = yield_output[0]
@@ -220,16 +224,107 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
         traj_type[(0,conf_num)] = "YIELD"
         conf_num +=1
 
-    stop_output = next(get_stop_general(ego_state,wx,wy)) #TODO add condition of existing front obstacle
-    # stop_output = None
-    if stop_output is not None:
-        q = ARRAY([stop_output[0].x[-1],stop_output[0].y[-1],stop_output[0].s_d[-1]])
-        confs.append(q)
-        traj_dict[(0,conf_num)] = stop_output[0]
-        traj_array[0][conf_num] = True
-        traj_type[(0,conf_num)] = "STOP"
-        conf_num +=1
-    # plot_candidate_trajectories_general(follow_output,yield_output,stop_output,ego_state,obstacles,wx,wy)
+    # stop_output = next(get_stop_general(ego_state,wx,wy)) #TODO add condition of existing front obstacle
+    # # stop_output = None
+    # if stop_output is not None:
+    #     print("Stop candidate exists")
+    #     q = ARRAY([stop_output[0].x[-1],stop_output[0].y[-1],stop_output[0].s_d[-1]])
+    #     confs.append(q)
+    #     traj_dict[(0,conf_num)] = stop_output[0]
+    #     traj_array[0][conf_num] = True
+    #     traj_type[(0,conf_num)] = "STOP"
+    #     conf_num +=1
+    # stop_at_intersection_output = None
+    # if dist_to_intersection is not None:
+    stop_at_intersection_output = None
+    overtake_output = None
+    if intersection:
+        stop_at_intersection_output = next(get_stop_at_intersection(ego_state,dist_to_intersection,wx,wy)) #TODO add condition of existing front obstacle
+        if stop_at_intersection_output is not None:
+            print("Stop candidate exists")
+            q = ARRAY([stop_at_intersection_output[0].x[-1],stop_at_intersection_output[0].y[-1],stop_at_intersection_output[0].s_d[-1]])
+            confs.append(q)
+            traj_dict[(0,conf_num)] = stop_at_intersection_output[0]
+            traj_array[0][conf_num] = True
+            traj_type[(0,conf_num)] = "STOP"
+            conf_num +=1
+    elif overtake_needed:
+        if not overtake_decision:
+            target_speed =min(max_speed,q0[2]+const_dv)
+            print(" overtake target speed : ",target_speed)
+            overtake_output = next(get_overtake_general(ego_state,target_speed,wx,wy))
+            if overtake_output is not None:
+                print("Follow candidate exists")
+                q = ARRAY([overtake_output[0].x[-1],overtake_output[0].y[-1],overtake_output[0].s_d[-1]])
+                confs.append(q)
+                traj_dict[(0,conf_num)] = overtake_output[0]
+                traj_array[0][conf_num] = True
+                traj_type[(0,conf_num)] = "OVERTAKE"
+                conf_num +=1
+        else:
+            delta_t = 0.2
+            overtake_output = FrenetPath()
+            overtake_output.t = [i-(delta_t*overtake_counter) for i in overtake_traj.t[overtake_counter:]] 
+            overtake_output.x = overtake_traj.x[overtake_counter:]
+            overtake_output.y = overtake_traj.y[overtake_counter:]
+            overtake_output.s = overtake_traj.s[overtake_counter:]
+            overtake_output.s_d = overtake_traj.s_d[overtake_counter:]
+            overtake_output.s_dd = overtake_traj.s_dd[overtake_counter:]
+            overtake_output.s_ddd = overtake_traj.s_ddd[overtake_counter:]
+            overtake_output.d = overtake_traj.d[overtake_counter:]
+            overtake_output.d_d = overtake_traj.d_d[overtake_counter:]
+            overtake_output.d_dd = overtake_traj.d_dd[overtake_counter:]
+            overtake_output.d_ddd = overtake_traj.d_ddd[overtake_counter:]
+            overtake_output.yaw = overtake_traj.yaw[overtake_counter:]
+            overtake_output = [overtake_output]
+            q_end = ARRAY([overtake_output[0].x[-1],overtake_output[0].y[-1],overtake_output[0].s_d[-1]])
+            confs.append(q_end)
+            
+            traj_dict[(0,conf_num)] = overtake_output[0]#change_right_output[0]
+            traj_array[0][conf_num] = True
+            traj_type[(0,conf_num)] = "OVERTAKE"
+            conf_num +=1
+    ############### generate more candidate trajectories #######
+    
+    for extra in range(extra_candidates):
+        target_speed =min(max_speed,q0[2]+(const_dv*2))
+        follow_output = next(get_follow_rand_general(ego_state,target_speed,wx,wy))
+        if follow_output is not None:
+            print("Random Follow candidate exists")
+            q = ARRAY([follow_output[0].x[-1],follow_output[0].y[-1],follow_output[0].s_d[-1]])
+            confs.append(q)
+            traj_dict[(0,conf_num)] = follow_output[0]
+            traj_array[0][conf_num] = True
+            traj_type[(0,conf_num)] = "FOLLOW"
+            conf_num +=1
+        front_obs_idx = extract_front_obstacle(obstacles,q0)   
+        target_speed =max(0,q0[2]-(const_dv*2))
+        yield_output = next(get_yield_rand_general(ego_state,target_speed,wx,wy)) #TODO add condition of existing front obstacle
+        if yield_output is not None:
+            print("Random Yield candidate exists")
+            q = ARRAY([yield_output[0].x[-1],yield_output[0].y[-1],yield_output[0].s_d[-1]])
+            confs.append(q)
+            traj_dict[(0,conf_num)] = yield_output[0]
+            traj_array[0][conf_num] = True
+            traj_type[(0,conf_num)] = "YIELD"
+            conf_num +=1
+
+        stop_output = next(get_stop_rand_general(ego_state,wx,wy)) #TODO add condition of existing front obstacle
+        # stop_output = None
+        if stop_output is not None:
+            print("Stop candidate exists")
+            q = ARRAY([stop_output[0].x[-1],stop_output[0].y[-1],stop_output[0].s_d[-1]])
+            confs.append(q)
+            traj_dict[(0,conf_num)] = stop_output[0]
+            traj_array[0][conf_num] = True
+            traj_type[(0,conf_num)] = "STOP"
+            conf_num +=1
+
+    #############################################################
+    
+    
+    
+    plot_candidate_trajectories_general(follow_output,yield_output,stop_at_intersection_output,overtake_output,ego_state,obstacles,wx,wy)
 
     # """ # debug
     # print("Connectivity array between configurations:")
@@ -238,7 +333,7 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
     #     print("q",i,":",confs[i])
     # """
     there_is_front_obs = False
-    translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file,obs_pred_traj)
+    translate_to_pddl_cr(goal_left,there_is_front_obs,confs,traj_dict,traj_type,traj_array,obstacles,file_path,problem_file,obs_pred_traj,dist_to_intersection)
     planner_path = os.getcwd() + "/ffstreams/ffplanner/ff"
     pddl_path = os.getcwd() + "/"+config['path']
     planner_output=subprocess.run([planner_path,"-p", pddl_path, "-o", "general_domain.pddl", "-f" ,"problem.pddl","-s","3"],capture_output=True)
@@ -252,12 +347,14 @@ def solve_ffstreams_general(ego_state,obstacles,obs_pred_traj,wx,wy,lane_width):
     #         overtake = True
         trajectories.append(traj_dict[(q_from[i],q_to[i])])
         final_traj_type = traj_type[(q_from[i],q_to[i])]
+        if final_traj_type == "OVERTAKE":
+            overtake_decision = True
 
-    return trajectories,confs,traj_dict,final_traj_type
+    return trajectories,confs,traj_dict,final_traj_type,overtake_decision
 
 
 
-def plot_candidate_trajectories_general(follow_output,yield_output,stop_output,ego_state,obstacles,wx,wy):
+def plot_candidate_trajectories_general(follow_output,yield_output,stop_output,overtake_output,ego_state,obstacles,wx,wy):
     show_output = True # important2
     if show_output:
         plt.cla()
@@ -282,7 +379,9 @@ def plot_candidate_trajectories_general(follow_output,yield_output,stop_output,e
         if stop_output is not None:
             plt.plot(stop_output[0].x[0:], stop_output[0].y[0:], "-b")
             plt.plot(stop_output[0].x[0],stop_output[0].y[0], "vc")
-        
+        if overtake_output is not None:
+            plt.plot(overtake_output[0].x[0:], overtake_output[0].y[0:], "-b")
+            plt.plot(overtake_output[0].x[0],overtake_output[0].y[0], "vc")
         # plt.xlim(0, 100)
         # plt.ylim(-5,5)
         plt.grid(True)

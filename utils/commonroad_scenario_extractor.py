@@ -486,9 +486,25 @@ def rotate_obstacles_in_scene(obs_pred_traj,num_obstacles,file_path):
 #             reference_wx.append(lane.center_vertices[-1][0])
 #             reference_wy.append(lane.center_vertices[-1][1])
 #     return reference_wx,reference_wy 
+def extract_distance_to_intersection(scenario,ego_state,go_left):
+    INIT_STATE = InitialState(position = [ego_state.x,ego_state.y])
+    if ego_state.y > -14.6 and not go_left:
+        return None
+    if ego_state.y > -14.7 and go_left:
+        return None
+    current_id = scenario.lanelet_network.find_most_likely_lanelet_by_state([INIT_STATE])[0]
+    if current_id == 475:
+        lane = scenario.lanelet_network.find_lanelet_by_id(current_id)
+        intersection_position=[lane.center_vertices[-1][0],lane.center_vertices[-1][1]]
+        distance_to_intersection = math.dist([ego_state.x,ego_state.y],intersection_position)
+        distance_to_intersection -= 5
+        distance_to_intersection = max(distance_to_intersection,0)
+        return distance_to_intersection - 5
+    else:
+        return None
 
-
-def extract_map_features(scene_path,init_position,goal_position):
+def extract_map_features(scene_path,init_position,goal_position,intersection = True):
+    distance_to_intersection = None
     scenario, planning_problem_set = CommonRoadFileReader(scene_path).open()
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     lanelets = scenario.lanelet_network.lanelets
@@ -519,6 +535,9 @@ def extract_map_features(scene_path,init_position,goal_position):
     
     for id in reference_ids:
         lane = scenario.lanelet_network.find_lanelet_by_id(id)
+        if intersection and id == 475 : #lane before intersection
+            intersection_position=[lane.center_vertices[-1][0],lane.center_vertices[-1][1]]
+            distance_to_intersection = math.dist(init_position,intersection_position)
         for i in range(len(lane.center_vertices)-1):
             reference_wx.append(lane.center_vertices[i][0])
             reference_wy.append(lane.center_vertices[i][1])
@@ -526,19 +545,33 @@ def extract_map_features(scene_path,init_position,goal_position):
         if id == reference_ids[-1]:
             reference_wx.append(lane.center_vertices[-1][0])
             reference_wy.append(lane.center_vertices[-1][1])
+    if intersection:
+        reference_wx = [x_init] + reference_wx[2:]
+        reference_wy = [y_init] + reference_wy[2:]
+    else:
+        reference_wx = [x_init] + reference_wx[9:]
+        reference_wy = [y_init] + reference_wy[9:]
 
-    reference_wx = [x_init] + reference_wx[2:]
-    reference_wy = [y_init] + reference_wy[2:]
     # get lane width
     p = [current_lane.left_vertices[0][0],current_lane.left_vertices[0][1]]
     q = [current_lane.right_vertices[0][0],current_lane.right_vertices[0][1]]
     lane_width = math.dist(p, q)
 
     #leave only two obstacles
-    scenario.remove_obstacle(scenario.dynamic_obstacles[0])
-    scenario.remove_obstacle(scenario.dynamic_obstacles[1])
-    scenario.remove_obstacle(scenario.dynamic_obstacles[1])
-    scenario.remove_obstacle(scenario.dynamic_obstacles[0])
+    if intersection:
+        scenario.remove_obstacle(scenario.dynamic_obstacles[0])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[1])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[1])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[0])
+    else:
+        scenario.remove_obstacle(scenario.dynamic_obstacles[2])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[2])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[3])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[3])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[3])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[3])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[5])
+        scenario.remove_obstacle(scenario.dynamic_obstacles[3])
     # #### save obstacle profiles into a file ##################
     # dyn_obs_x = []
     # dyn_obs_y = []
@@ -549,25 +582,38 @@ def extract_map_features(scene_path,init_position,goal_position):
     # dyn_obs_length = []
     # dyn_obs_width = []
     # dyn_obs_id = []
-    # for dyn_obst in scenario.dynamic_obstacles:
-    #     for i in range(300):
-    #         dyn_obs_id.append(dyn_obst.obstacle_id)
-    #         dyn_obs_t.append(i)
-    #         dyn_obs_length.append(dyn_obst.obstacle_shape.length)
-    #         dyn_obs_width.append(dyn_obst.obstacle_shape.width)
-    #         if i < 131 :
-    #             dyn_obs_x.append(dyn_obst.state_at_time(i).position[0])
-    #             dyn_obs_y.append(dyn_obst.state_at_time(i).position[1])
-    #             dyn_obs_yaw.append(dyn_obst.state_at_time(i).orientation)
-    #             dyn_obs_v.append(dyn_obst.state_at_time(i).velocity)
-    #             dyn_obs_a.append(dyn_obst.state_at_time(i).acceleration)
-    #         else:
-    #             dyn_obs_x.append(dyn_obst.state_at_time(130).position[0])
-    #             dyn_obs_y.append(dyn_obst.state_at_time(130).position[1])
-    #             dyn_obs_yaw.append(dyn_obst.state_at_time(130).orientation)
-    #             dyn_obs_v.append(0)
-    #             dyn_obs_a.append(0)
+    # dyn_obst = scenario.dynamic_obstacles[2]
+    # t = []
+    # x = []
+    # y = []
+    # for i in range(100):
+    #     t.append(i)
+    #     x.append(dyn_obst.state_at_time(i).position[0])
+    #     y.append(dyn_obst.state_at_time(i).position[1])
+    # for ti in np.arange(0.0, 100.0, 0.25):
+    #     dyn_obs_id.append(dyn_obst.obstacle_id)
+    #     dyn_obs_t.append(int(ti*4))
+    #     dyn_obs_length.append(dyn_obst.obstacle_shape.length)
+    #     dyn_obs_width.append(dyn_obst.obstacle_shape.width)
+
+    #     dyn_obs_x.append(np.interp(ti ,t,x))
+    #     dyn_obs_y.append(np.interp(ti ,t,y))
+    #     dyn_obs_yaw.append(dyn_obst.state_at_time(0).orientation)
+
+    # dyn_obs_v.append(0)    
+    # for i in range(1,len(dyn_obs_t))  :  
+    #     p = [dyn_obs_x[i],dyn_obs_y[i]]
+    #     q = [dyn_obs_x[i-1],dyn_obs_y[i-1]]
+    #     ds = math.dist(p, q)
+    #     dyn_obs_v.append(ds/0.1)
+    
+    # dyn_obs_a.append(0) 
+    # for i in range(1,len(dyn_obs_t))  :  
+    #     dv = dyn_obs_v[i] - dyn_obs_v[i-1]
+    #     dyn_obs_a.append(dv/0.1)
+
             
+     
     # data = {}
     # data['time'] = dyn_obs_t
     # data['id'] = dyn_obs_id
@@ -580,7 +626,7 @@ def extract_map_features(scene_path,init_position,goal_position):
     # data['width'] = dyn_obs_width
     
     # df = pd.DataFrame(data=data)
-    # file_path = 'ffstreams/scenarios/commonroad/obstacles_profiles/data_obstacle_1.csv'
+    # file_path = 'ffstreams/scenarios/commonroad/obstacles_profiles/data_obstacle_2_highway.csv'
     # os.makedirs(os.path.dirname(file_path), exist_ok=True)
     # df.to_csv(file_path, index=False)
     # ####### end of save obstacle profiles into a file ##############################
@@ -597,21 +643,110 @@ def extract_map_features(scene_path,init_position,goal_position):
 
     # scenario.add_objects(new_obs)
     ####################
-    
-    # # plot the planning problem and the scenario for the fifth time step
+    # df = pd.read_csv('/home/mais2/QCNet/ffstreams/auto_driving/gifs/general_gifs/exp_20240617-000220_left_turn_79/data_68_success.csv')
+    # time_stp = 80#66#52#30
+    # time_stp_i = 46#33#11# 0
     # plt.figure(figsize=(25, 10))
     # rnd = MPRenderer()
-    # rnd.draw_params.time_begin = 0
+    # rnd.draw_params.time_begin = time_stp
     # scenario.draw(rnd)
-    # #planning_problem_set.draw(rnd)
+    # # #planning_problem_set.draw(rnd)
     # rnd.render()
-    # rect = plt_rect(xy=(x_init-2.5, y_init-1.0), width=5.0, height=2.0, angle=90, rotation_point='center', color='green',zorder = 20)
+    # rect = plt_rect(xy=(df['x'][time_stp_i]-2.5, df['y'][time_stp_i]-1.0), width=5.0, height=2.0, angle=math.degrees(df['yaw'][time_stp_i]), rotation_point='center', color='green',zorder = 20)
     # ax = plt.gca()
     # ax.add_patch(rect)
-    # plt.plot(x_init,y_init,'ro',zorder = 20) 
+    # plt.xlim(300, 425)
+    # plt.ylim(-50, 40)
+    # import matplotlib.font_manager as font_manager
+
+    # font_prop = font_manager.FontProperties(size=14)
+    # ax.text(310, -45, "t = 8.0 s", rotation=0,fontproperties=font_prop, verticalalignment='bottom')
+
+    # plt.plot(df['x'][time_stp_i:time_stp_i+24],df['y'][time_stp_i:time_stp_i+24],linewidth=4,color='green',zorder = 20) 
+    # plt.show()
+
+    #####################
+    # c = df['v'][time_stp_i:time_stp_i+24]
+    # plt.scatter(df['x'][time_stp_i:time_stp_i+24], df['y'][time_stp_i:time_stp_i+24], c=c, marker='_',zorder = 20)
+    
+    # # NPOINTS = 25
+    # # COLOR='blue'
+    # # RESFACT=10
+    # # MAP='winter'
+    # # get higher resolution data
+    # x = df['x'][time_stp_i:time_stp_i+25]
+    # y = df['y'][time_stp_i:time_stp_i+25]
+    # dydx = df['v'][time_stp_i:time_stp_i+25]
+
+    # from matplotlib.collections import LineCollection
+    # from matplotlib.colors import BoundaryNorm, ListedColormap
+
+    # # Create a set of line segments so that we can color them individually
+    # # This creates the points as an N x 1 x 2 array so that we can stack points
+    # # together easily to get the segments. The segments array for line collection
+    # # needs to be (numlines) x (points per line) x 2 (for x and y)
+    # points = np.array([x, y]).T.reshape(-1, 1, 2)
+    # segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    # # fig, axs = plt.subplots(2, 1, sharex=True, sharey=True)
+
+    # # Create a continuous norm to map from data points to colors
+    # norm = plt.Normalize(dydx.min(), dydx.max())
+    # lc = LineCollection(segments, cmap='viridis', norm=norm)
+    # # Set the values used for colormapping
+    # lc.set_array(dydx)
+    # lc.set_linewidth(2)
+    # line = ax.add_collection(lc)
+    # plt.colorbar(line, ax=ax,zorder = 20)
+
+    # # Use a boundary norm instead
+    # cmap = ListedColormap(['r', 'g', 'b'])
+    # norm = BoundaryNorm([-1, -0.5, 0.5, 1], cmap.N)
+    # lc = LineCollection(segments, cmap=cmap, norm=norm)
+    # lc.set_array(dydx)
+    # lc.set_linewidth(2)
+    # line = ax.add_collection(lc)
+    # plt.colorbar(line, ax=ax,zorder = 20)
+
+    # ax.set_xlim(x.min(), x.max())
+    
+    # xHiRes,yHiRes = highResPoints(x,y,RESFACT)
+    # npointsHiRes = len(xHiRes)
+
+    # cm = plt.get_cmap(MAP)
+
+    # ax.set_color_cycle([cm(1.*i/(npointsHiRes-1)) 
+                        # for i in range(npointsHiRes-1)])
+
+    # color1 = '#FB575D'
+    # color2 = '#15251B'
+    # color = get_color_gradient(color1, color2, len(x))
+    # plt.plot(x,y,color=color,linewidth=4,zorder = 20) 
+    # cm = plt.get_cmap(MAP)
+    # ax.set_prop_cycle([cm(1.*i/(NPOINTS-1)) for i in range(NPOINTS-1)])
+    # for i in range(NPOINTS-1):
+    #     ax.plot(x[i:i+2],y[i:i+2])
+
+    
+    # plt.plot(df['x'][time_stp_i],df['y'][time_stp_i],'ro',zorder = 20) 
     # plt.plot(goal_position[0],goal_position[1],'ro',zorder = 20) 
     # plt.plot(reference_wx,reference_wy,'go',zorder = 20) 
     # plt.show()
+    
+    # # plot the planning problem and the scenario for the fifth time step
+    plt.figure(figsize=(25, 10))
+    rnd = MPRenderer()
+    rnd.draw_params.time_begin = 0
+    scenario.draw(rnd)
+    #planning_problem_set.draw(rnd)
+    rnd.render()
+    rect = plt_rect(xy=(x_init-2.5, y_init-1.0), width=5.0, height=2.0, angle=math.degrees(-0.654), rotation_point='center', color='green',zorder = 20)
+    ax = plt.gca()
+    ax.add_patch(rect)
+    # plt.plot(x_init,y_init,'ro',zorder = 20) 
+    # plt.plot(goal_position[0],goal_position[1],'ro',zorder = 20) 
+    # plt.plot(reference_wx,reference_wy,'g-',zorder = 20) 
+    plt.show()
     # # end plot
     ################### collision check example #################
     # # create a trajectory for the ego vehicle starting at time step 0
@@ -643,7 +778,8 @@ def extract_map_features(scene_path,init_position,goal_position):
     # rnd.render()
     # plt.show()
 
-    return reference_wx,reference_wy , lane_width ,scenario
+    return reference_wx,reference_wy , lane_width ,scenario,distance_to_intersection
+
 
 def collision_check(ego_traj,obs_traj):
     # ego trajectory (50 length)
@@ -683,7 +819,7 @@ def collision_check(ego_traj,obs_traj):
 
 
 
-def plot_pred(scenario,ego_state,obs_pred_traj,all_pred,all_prob,wx,wy,time_step,ego_traj,trajectories2):
+def plot_pred(scenario,ego_state,obs_pred_traj,all_pred,all_prob,wx,wy,time_step,ego_traj,trajectories2,intersection = True):
 
     x_init = ego_state.x
     y_init = ego_state.y
@@ -692,41 +828,52 @@ def plot_pred(scenario,ego_state,obs_pred_traj,all_pred,all_prob,wx,wy,time_step
     ego_height = 2.0
     ## plot the planning problem and the scenario for the fifth time step
     plt.figure(figsize=(25, 10))
+    # plt.ioff()
     rnd = MPRenderer()
     rnd.draw_params.time_begin = time_step
+    if not intersection:
+        heading_deg_obs = math.degrees(-0.654)
+        if len(scenario.dynamic_obstacles) >3:
+            scenario.remove_obstacle(scenario.dynamic_obstacles[2])
+
+
     scenario.draw(rnd)
     #planning_problem_set.draw(rnd)
     rnd.render()
+    
     rect = plt_rect(xy=(x_init-ego_width/2, y_init-ego_height/2), width=ego_width, height=ego_height, angle=heading_deg, rotation_point='center', color='green',zorder = 20)
+    if not intersection:
+        rect = plt_rect(xy=(obs_pred_traj[0,0,0,0]-ego_width/2, obs_pred_traj[0,0,0,1]-ego_height/2), width=ego_width, height=ego_height, angle=heading_deg_obs, rotation_point='center', color='blue',zorder = 20)
     ax = plt.gca()
     ax.add_patch(rect)
     
     # plt.plot(wx,wy,'r-',zorder = 20) 
     #plot predicted trajectories
     if all_pred is None:
-        obs_x = obs_pred_traj[0,0,:,0]
-        obs_y = obs_pred_traj[0,0,:,1] 
+        obs_x = obs_pred_traj[0,0,:50,0]
+        obs_y = obs_pred_traj[0,0,:50,1] 
         plt.plot(obs_x,obs_y,'b-',zorder = 20) 
     else:
         for i in range(all_pred.shape[0]):
             for k in range(all_pred.shape[1]):
-                obs_x = all_pred[i,k,:,0] 
-                obs_y = all_pred[i,k,:,1] 
+                obs_x = all_pred[i,k,:50,0] 
+                obs_y = all_pred[i,k,:50,1] 
                 plt.plot(obs_x,obs_y,'-',c='turquoise',zorder = 20) 
             # plot predicted trajectory with highest probability
             highest_probability_idx = np.argmax(all_prob[i])
-            obs_x = all_pred[i,highest_probability_idx,:,0]
-            obs_y = all_pred[i,highest_probability_idx,:,1] 
+            obs_x = all_pred[i,highest_probability_idx,:50,0]
+            obs_y = all_pred[i,highest_probability_idx,:50,1] 
             plt.plot(obs_x,obs_y,'b-',zorder = 20) 
             # plot predicted trajectory with second highest probability
             second_high_prob_idx = np.argsort(all_prob[i])[-2]
-            obs_x = all_pred[i,second_high_prob_idx,:,0]
-            obs_y = all_pred[i,second_high_prob_idx,:,1] 
+            obs_x = all_pred[i,second_high_prob_idx,:50,0]
+            obs_y = all_pred[i,second_high_prob_idx,:50,1] 
             plt.plot(obs_x,obs_y,'-',c='dodgerblue',zorder = 20) 
     plt.plot(ego_traj.x,ego_traj.y,'g-',zorder = 21) 
     plt.plot(x_init,y_init,'ro',zorder = 20) 
-    plt.xlim(300, 425)
-    plt.ylim(-50, 40)
+    if intersection:
+        plt.xlim(300, 425)
+        plt.ylim(-50, 40)
     if trajectories2 is not None:
         ego_traj2 = trajectories2[0]
         plt.plot(ego_traj2.x,ego_traj2.y,'y:',zorder = 21) 
@@ -734,6 +881,7 @@ def plot_pred(scenario,ego_state,obs_pred_traj,all_pred,all_prob,wx,wy,time_step
     #plt.show()
     filename =  f'{time_step}.png'
     plt.savefig(filename)
+    # plt.cla()
 
     ## end plot
 
