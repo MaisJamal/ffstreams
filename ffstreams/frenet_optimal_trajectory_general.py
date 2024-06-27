@@ -9,7 +9,7 @@ sys.path.append(str(pathlib.Path(__file__).parent.parent))
 from ffstreams.ffstreams.quintic_polynomials_planner import QuinticPolynomial
 from ffstreams.ffstreams import cubic_spline_planner
 import yaml
-with open('ffstreams/config/config.yml', 'r') as file:
+with open('config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 config = config['general']
 

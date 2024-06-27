@@ -2,13 +2,13 @@
 from imaplib import Time2Internaldate
 from os import terminal_size
 import numpy as np
-import ffstreams.utils.settings as stg
-from ffstreams.ffstreams.frenet_optimizer import FrenetPath,get_traj
+import utils.settings as stg
+from ffstreams.frenet_optimizer import FrenetPath,get_traj
 import random
 from numpy.linalg import norm
 import time
-from ffstreams.utils.common import get_limit_coord_obs,get_heading
-from ffstreams.utils.commonroad_scenario_extractor import collision_check
+from utils.common import get_limit_coord_obs,get_heading
+from utils.commonroad_scenario_extractor import collision_check
 ARRAY = np.array 
 
 

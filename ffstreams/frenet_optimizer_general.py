@@ -28,20 +28,20 @@ import time
 
 from numpy.lib.nanfunctions import _nanpercentile_dispatcher
 
-import ffstreams.utils.settings as stg
+import utils.settings as stg
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../QuinticPolynomialsPlanner/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../CubicSpline/")
-from ffstreams.ffstreams import cubic_spline_planner
+from ffstreams import cubic_spline_planner
 
 try:
-    from ffstreams.ffstreams.quintic_polynomials_planner import QuinticPolynomial
+    from ffstreams.quintic_polynomials_planner import QuinticPolynomial
 except ImportError:
     raise
 import yaml
-with open('ffstreams/config/config.yml', 'r') as file:
+with open('config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 config = config['general']
 

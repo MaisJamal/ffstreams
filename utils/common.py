@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from ffstreams.ffstreams import cubic_spline_planner
+from ffstreams import cubic_spline_planner
 
 
 

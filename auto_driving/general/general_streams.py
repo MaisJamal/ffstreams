@@ -1,9 +1,9 @@
 import numpy as np
-import ffstreams.utils.settings as stg
-from ffstreams.ffstreams.frenet_optimizer_cr import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
-from ffstreams.ffstreams.frenet_optimizer_general import get_traj_stop_at_intersection, get_traj_stop_general,get_traj_overtake_general,get_traj_follow_speed_general,get_traj_yield_general
+import utils.settings as stg
+from ffstreams.frenet_optimizer_cr import FrenetPath,get_traj,get_traj_change_lane,get_traj_yield,get_traj_follow_speed,get_traj_change_lane_overtake
+from ffstreams.frenet_optimizer_general import get_traj_stop_at_intersection, get_traj_stop_general,get_traj_overtake_general,get_traj_follow_speed_general,get_traj_yield_general
 import random
-from ffstreams.utils.apollo_utils import EgoState
+from utils.apollo_utils import EgoState
 
 def combine(traj1,traj2):
     total_traj = FrenetPath()

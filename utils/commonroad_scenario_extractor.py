@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.scenario.trajectory import State as StTraj
-from ffstreams.utils.common import get_heading
+from utils.common import get_heading
 from matplotlib.patches import Rectangle as plt_rect
 
 import math
@@ -28,7 +28,7 @@ from commonroad.geometry.shape import Rectangle
 
 from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import create_collision_checker, create_collision_object
 from commonroad.prediction.prediction import TrajectoryPrediction, SetBasedPrediction
-from commonroad.scenario.state import State,InitialState
+# from commonroad.scenario.state import State,InitialState
 
 SHIFT_IN_FFSTREAM_Y = 48.25
 SCENARIO_ROTATION_DEGREES = 0

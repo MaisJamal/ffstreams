@@ -19,7 +19,7 @@ from ffstreams.ffstreams.frenet_optimizer_general import get_traj_overtake_gener
 import pandas as pd
 from predict import predict_traj
 import yaml
-with open('ffstreams/config/config.yml', 'r') as file:
+with open('config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 config = config['general']
 

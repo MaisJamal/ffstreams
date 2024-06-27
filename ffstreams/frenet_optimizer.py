@@ -28,7 +28,7 @@ import time
 
 from numpy.lib.nanfunctions import _nanpercentile_dispatcher
 
-import ffstreams.utils.settings as stg
+import utils.settings as stg
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../QuinticPolynomialsPlanner/")
@@ -36,8 +36,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../CubicSpline/")
 
 try:
-    from ffstreams.ffstreams.quintic_polynomials_planner import QuinticPolynomial
-    import ffstreams.ffstreams.cubic_spline_planner
+    from ffstreams.quintic_polynomials_planner import QuinticPolynomial
+    import ffstreams.cubic_spline_planner
 except ImportError:
     raise
 

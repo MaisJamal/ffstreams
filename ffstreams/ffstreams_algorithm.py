@@ -1,24 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from ffstreams.utils.viewer import get_rect
+from utils.viewer import get_rect
 import matplotlib.patches as mpatches
 import os
 import subprocess
 import re
 
-from ffstreams.auto_driving.apollo.apollo_streams import get_yield, get_follow_speed
-from ffstreams.auto_driving.general.general_streams import get_overtake_general,get_stop_general,get_yield_general, get_stop_at_intersection,get_follow_speed_general,get_stop_rand_general,get_yield_rand_general, get_follow_rand_general
+from auto_driving.apollo.apollo_streams import get_yield, get_follow_speed
+from auto_driving.general.general_streams import get_overtake_general,get_stop_general,get_yield_general, get_stop_at_intersection,get_follow_speed_general,get_stop_rand_general,get_yield_rand_general, get_follow_rand_general
 
-import ffstreams.utils.apollo_config as cfg
-from ffstreams.utils.apollo_utils import extract_front_obstacle
+import utils.apollo_config as cfg
+from utils.apollo_utils import extract_front_obstacle
 
-from ffstreams.utils.translator import translate_to_pddl_apollo,translate_to_pddl_cr
-from ffstreams.ffstreams.frenet_optimizer_cr import FrenetPath
+from utils.translator import translate_to_pddl_apollo,translate_to_pddl_cr
+from ffstreams.frenet_optimizer_cr import FrenetPath
 
-from ffstreams.ffstreams.frenet_optimizer_general import generate_target_course
+from ffstreams.frenet_optimizer_general import generate_target_course
 
 import yaml
-with open('ffstreams/config/config.yml', 'r') as file:
+with open('config/config.yml', 'r') as file:
     config = yaml.safe_load(file)
 config = config['general']
 
